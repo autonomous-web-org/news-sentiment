@@ -1,14 +1,18 @@
 const path = require('path');
+const MiniCssExtractPlugin     = require('mini-css-extract-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserWebpackPlugin = require('terser-webpack-plugin');
 
 module.exports = {
   mode: "production",
   entry: {
-    popup: './src/home/script.js',       // Entry point for script.js
-    global: './src/global.js',
-    // ads: './src/ads.js', // Entry point for components.js
-    // license: './src/license.js', // Entry point for components.js
+    index_script: './src/_home/script.js',
+
+    // privacy_script: './_privacypolicy/script.js',
+    // refund_script: './_refund/script.js',
+    // terms_script: './_terms/script.js',
+
+    tailwind:        './globals/tailwind.css',  // ← include your Tailwind source
   },
   devtool: false, // Use source maps without eval
   output: {
@@ -30,8 +34,13 @@ module.exports = {
         }
       },
       {
-        test: /\.css$/,
-        use: ['style-loader', 'css-loader']
+        test: /\.css$/i,
+        include: path.resolve(__dirname, 'globals'),
+        use: [
+          MiniCssExtractPlugin.loader,  // extract to file
+          'css-loader',                 // resolves imports
+          'postcss-loader'              // runs Tailwind + autoprefixer
+        ]
       },
       {
         test: /\.(png|jpe?g|gif|svg|woff2?|ttf|eot)$/, // Handle images and fonts
@@ -43,12 +52,22 @@ module.exports = {
     ]
   },
   plugins: [
+    new MiniCssExtractPlugin({
+      filename: 'tailwind.css'          // emits dist/styles.css
+    }),
     new CopyWebpackPlugin({
       patterns: [
-        { from: './src/home/index.html', to: 'index.html' },
-        { from: './src/home/style.css', to: 'index.css' },
-        // { from: './src/assets', to: 'assets' },
-        { from: './src/locales', to: '_locales' },
+        { from: './404.html', to: '404.html' },
+        { from: './_home/index.html', to: 'index.html' },
+
+        // { from: './_privacypolicy/index.html', to: 'privacy-policy.html' },
+        // { from: './_refund/index.html', to: 'refund-policy.html' },
+        // { from: './_terms/index.html', to: 'terms.html' },
+
+        { from: './robots.txt',       to: 'robots.txt' },
+        { from: './sitemap.xml',       to: 'sitemap.xml' },
+        { from: './locales', to: 'locales' },
+        { from: './assets', to: 'assets' }
       ]
     })
   ],
@@ -59,7 +78,7 @@ module.exports = {
         extractComments: false,
         terserOptions: {
           compress: {
-            drop_console: false, // Remove console logs
+            drop_console: true, // Remove console logs
           },
           output: {
             comments: false, // Removes comments
