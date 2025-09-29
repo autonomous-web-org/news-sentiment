@@ -6,13 +6,13 @@ const TerserWebpackPlugin = require('terser-webpack-plugin');
 module.exports = {
   mode: "production",
   entry: {
-    index_script: './src/_home/script.js',
+    home_script: './src/_home/script.js',
 
     // privacy_script: './_privacypolicy/script.js',
     // refund_script: './_refund/script.js',
     // terms_script: './_terms/script.js',
 
-    tailwind:        './globals/tailwind.css',  // ← include your Tailwind source
+    tailwind:        './src/globals/tailwind.css',  // ← include your Tailwind source
   },
   devtool: false, // Use source maps without eval
   output: {
@@ -35,7 +35,7 @@ module.exports = {
       },
       {
         test: /\.css$/i,
-        include: path.resolve(__dirname, 'globals'),
+        include: path.resolve(__dirname, 'src/globals'),
         use: [
           MiniCssExtractPlugin.loader,  // extract to file
           'css-loader',                 // resolves imports
@@ -46,7 +46,7 @@ module.exports = {
         test: /\.(png|jpe?g|gif|svg|woff2?|ttf|eot)$/, // Handle images and fonts
         type: 'asset/resource', // Use the built-in asset module
         generator: {
-          filename: './assets/[hash][ext][query]' // Specify output path for assets
+          filename: './src/assets/[hash][ext][query]' // Specify output path for assets
         }
       }
     ]
@@ -57,17 +57,17 @@ module.exports = {
     }),
     new CopyWebpackPlugin({
       patterns: [
-        { from: './404.html', to: '404.html' },
-        { from: './_home/index.html', to: 'index.html' },
+        // { from: './src/404.html', to: '404.html' },
+        { from: './src/_home/index.html', to: 'index.html' },
 
         // { from: './_privacypolicy/index.html', to: 'privacy-policy.html' },
         // { from: './_refund/index.html', to: 'refund-policy.html' },
         // { from: './_terms/index.html', to: 'terms.html' },
 
-        { from: './robots.txt',       to: 'robots.txt' },
-        { from: './sitemap.xml',       to: 'sitemap.xml' },
-        { from: './locales', to: 'locales' },
-        { from: './assets', to: 'assets' }
+        // { from: './src/robots.txt',       to: 'robots.txt' },
+        // { from: './src/sitemap.xml',       to: 'sitemap.xml' },
+        // { from: './src/locales', to: 'locales' },
+        // { from: './src/assets', to: 'assets' }
       ]
     })
   ],

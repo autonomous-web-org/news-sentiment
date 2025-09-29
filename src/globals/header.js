@@ -14,14 +14,14 @@ for (var i = navLinks.length - 1; i >= 0; i--) {
 }
 
 // mobile screen menu button =========================================================================
-document.querySelector("#mobile-navigation-menu-btn").addEventListener("click", (e) => {
-	const nav = document.querySelector("nav");
+// document.querySelector("#mobile-navigation-menu-btn").addEventListener("click", (e) => {
+// 	const nav = document.querySelector("nav");
 
-	nav.classList.toggle("hidden");
-	nav.classList.toggle("flex");
+// 	nav.classList.toggle("hidden");
+// 	nav.classList.toggle("flex");
 
-	console.log("clicked!", e)
-});
+// 	console.log("clicked!", e)
+// });
 
 
 // internationalization =========================================================================
@@ -73,14 +73,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // 3) when user picks from the dropdown, update the hash
-  const sel = document.getElementById('lang-select');
-  if (sel) {
-    sel.addEventListener('change', e => {
-      const newLang = e.target.value;
-      // update hash (triggers the hashchange listener above)
-      window.location.hash = 'lang-' + newLang;
-    });
-  }
+  // const sel = document.getElementById('lang-select');
+  // if (sel) {
+  //   sel.addEventListener('change', e => {
+  //     const newLang = e.target.value;
+  //     // update hash (triggers the hashchange listener above)
+  //     window.location.hash = 'lang-' + newLang;
+  //   });
+  // }
 });
 
 function updateContent() {
