@@ -53,7 +53,7 @@ module.exports = {
   },
   plugins: [
     new MiniCssExtractPlugin({
-      filename: 'tailwind.css'          // emits dist/styles.css
+      filename: 'tailwind.css'          // emits dist/tailwind.css
     }),
     new CopyWebpackPlugin({
       patterns: [

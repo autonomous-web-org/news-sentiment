@@ -1,0 +1,134 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap');
+@import "tailwindcss";  /* single-line Tailwind import :contentReference[oaicite:3]{index=3} */
+
+
+@theme {
+  --color-dark: #1D1D1D;
+  --color-light: #FAFAFA;
+  --color-mid: #9F9F9F;
+}
+
+:root {
+  font-family: "Lato", cursive;
+  font-style: normal;
+  line-height: 1.3;
+  font-weight: 300;
+
+/*  color-scheme: light dark;*/
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --color-dark: #1D1D1D;
+  --color-light: #FAFAFA;
+  --color-mid: #9F9F9F;
+
+  --color-dark-5: #1D1D1D9D;
+
+  --responsive-container-px: 3rem;
+
+  scroll-behavior: smooth;
+
+  filter: brightness(1);
+  
+  transition: opacity .3s linear, filter .3s linear;
+}
+
+
+/* 4. Base layer: set Indie Flower as the site’s default font */
+@layer base {
+  html, body {
+    block-size: 100vh;
+  /*  font-size: clamp(1rem, 1.1vw + 1vh, 2rem);*/
+  }
+
+}
+
+@layer components {
+    /* ensure consistent snap behavior */
+  .feedback-carousel {
+    scroll-behavior: smooth;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+
+    ::-webkit-scrollbar {
+      display: hidden;
+    }
+  }
+
+  #service-cards article.in-view {
+    background: var(--color-dark) !important;
+    color: var(--color-light) !important;
+  }
+}
+/*
+::selection {
+  color: white;
+  background: grey;
+}
+*, *::before, *::after {
+  scroll-behavior: inherit;
+  box-sizing: border-box;
+  margin: 0;
+
+}
+
+
+html {
+  -moz-text-size-adjust: none;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+img, picture, video, canvas, svg {
+  display: block;
+  max-inline-size: 100%;
+  object-fit: cover;
+  block-size: auto;
+}
+input, button, textarea, select {
+  font: inherit;
+}
+p, h1, h2, h3, h4, h5, h6 {
+  overflow-wrap: break-word;
+}
+p {
+}
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.2;
+}
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+canvas{
+  -webkit-transform3d: translate(0,0,0);
+  -moz-transform3d: translate(0,0,0);
+  transform3d: translate(0,0,0);
+
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+button:focus, a:focus {
+  outline: solid 1px #686868;
+  border-radius: 3px;
+}
+
+#root, #__next {
+  isolation: isolate;
+}
+*/
