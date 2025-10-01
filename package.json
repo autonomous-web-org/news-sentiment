@@ -1,5 +1,5 @@
 {
-  "name": "news_sentiment_static",
+  "name": "news_sentiment_scores",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
