@@ -65,7 +65,7 @@
 
         <!-- Existing table section unchanged -->
         <section aria-labelledby="sentiment-table-heading" class="max-w-4xl mx-auto">
-            <h2 id="sentiment-table-heading" class="sr-only">Daily sentiment table</h2>
+            <!-- <h2 id="sentiment-table-heading" class="sr-nly">Daily sentiment table</h2> -->
 
             <div class="flex flex-col sm:flex-row items-start gap-6">
                 <!-- Legend (left of table on sm+) -->
@@ -91,10 +91,11 @@
                 </aside>
 
                 <!-- Table card -->
-                <div class="flex-1 bg-white dark:bg-black/20 p-3 overflow-auto h-[63vh] w-full rounded-xl shadow-sm">
+                <div class="flex-1 bg-white dark:bg-black/20 p-3 overflow-auto max-h-[60vh] w-full rounded-xl shadow-sm">
+                        <p id="status" class="sr-ony" aria-live="polite"></p>
                         <table class="w-full text-left">
-                            <caption class="sr-only">Daily sentiment scores for recent dates</caption>
-                            <thead>
+                            <!-- <caption class="sr-only">Daily sentiment scores for recent dates</caption> -->
+                            <thead class="top-0 sticky bg-white dark:bg-black">
                                 <tr class="border-b border-black/10 dark:border-white/10">
                                     <th scope="col" class="p-4 text-sm font-semibold text-black/60 dark:text-white/60">
                                         Date</th>
