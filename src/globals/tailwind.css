@@ -2,10 +2,14 @@
 @import "tailwindcss";  /* single-line Tailwind import :contentReference[oaicite:3]{index=3} */
 
 
+
+/* Enable class-based dark mode variant */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-primary: #1173d4;
-  --background-light: #f6f7f8;
-  --background-dark: #101922;
+  --color-background-light: #f6f7f8;
+  --color-background-dark: #101922;
 }
 
 :root {
@@ -32,7 +36,7 @@
 
   filter: brightness(1);
   
-  transition: opacity .3s linear, filter .3s linear;
+  transition: .3s ease;
 }
 
 
@@ -42,7 +46,9 @@
     block-size: 100vh;
   /*  font-size: clamp(1rem, 1.1vw + 1vh, 2rem);*/
   }
-
+  *{
+    transition: .3s ease;
+  }
 }
 
 /*

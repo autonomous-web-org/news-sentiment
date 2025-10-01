@@ -10,93 +10,141 @@
 	<!-- <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script> -->
 </head>
 
-<body class="bg-background-light dark:bg-background-dark font-display text-black dark:text-white transition-colors duration-300">
-
-<div class="flex flex-col min-h-screen">
-<header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm border-b border-black/10 dark:border-white/10">
-<div class="container mx-auto px-4 sm:px-6 lg:px-8">
-<div class="flex items-center justify-between h-16">
-<div class="flex items-center gap-4">
-<span class="material-symbols-outlined text-primary text-3xl">
-                            analytics
-                        </span>
-<h1 class="text-xl font-bold">News Sentiment Dashboard</h1>
-</div>
-<div class="flex items-center gap-4">
-<button class="p-2 rounded-full text-black/60 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/10 transition-colors" id="toggle-theme-btn">
-<span class="material-symbols-outlined dark:hidden">light_mode</span>
-<span class="material-symbols-outlined hidden dark:inline">dark_mode</span>
+<body class="bg-background-light dark:bg-background-dark font-display text-black dark:text-white min-h-screen">
+  <header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm border-b border-black/10 dark:border-white/10">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <h1 class="text-xl font-bold">News Sentiment Dashboard</h1>
+      <!-- Icon-only theme toggle -->
+      <button
+      id="toggle-theme-btn"
+      type="button"
+      class="p-2 rounded-full text-black/60 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/10 aria-pressed:text-white"
+      aria-label="Toggle dark mode"
+      aria-pressed="false">
+      <svg viewBox="0 0 24 24" width="24" fill="none" xmlns="http://www.w3.org/2000/svg" class="fill-current">
+        <path d="M12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8V16Z" fill="currentColor"></path>
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM12 4V8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16V20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4Z" fill="currentColor"></path>
+    </svg>
 </button>
-</div>
-</div>
+
 </div>
 </header>
-<main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-<div class="max-w-4xl mx-auto">
-<div class="mb-8">
-<div class="relative">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-black/40 dark:text-white/40">
-                            search
-                        </span>
-<input class="w-full pl-10 pr-4 py-3 rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-black/20 focus:ring-2 focus:ring-primary focus:border-primary transition-all text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40" placeholder="Enter stock ticker (e.g., AAPL, GOOGL)" type="text"/>
-</div>
-</div>
-<div class="bg-white dark:bg-black/20 p-6 sm:p-8 rounded-xl shadow-sm">
-<div class="overflow-x-auto">
-<table class="w-full text-left">
-<thead>
-<tr class="border-b border-black/10 dark:border-white/10">
-<th class="p-4 text-sm font-semibold text-black/60 dark:text-white/60">Date</th>
-<th class="p-4 text-sm font-semibold text-black/60 dark:text-white/60 text-center">Sentiment Score</th>
-</tr>
-</thead>
-<tbody class="divide-y divide-black/10 dark:divide-white/10">
-<tr>
-<td class="p-4 whitespace-nowrap text-sm">2024-05-20</td>
-<td class="p-4 whitespace-nowrap text-sm text-center">1</td>
-</tr>
-<tr>
-<td class="p-4 whitespace-nowrap text-sm">2024-05-19</td>
-<td class="p-4 whitespace-nowrap text-sm text-center">2</td>
-</tr>
-<tr>
-<td class="p-4 whitespace-nowrap text-sm">2024-05-18</td>
-<td class="p-4 whitespace-nowrap text-sm text-center">3</td>
-</tr>
-<tr>
-<td class="p-4 whitespace-nowrap text-sm">2024-05-17</td>
-<td class="p-4 whitespace-nowrap text-sm text-center">1</td>
-</tr>
-<tr>
-<td class="p-4 whitespace-nowrap text-sm">2024-05-16</td>
-<td class="p-4 whitespace-nowrap text-sm text-center">2</td>
-</tr>
-<tr>
-<td class="p-4 whitespace-nowrap text-sm">2024-05-15</td>
-<td class="p-4 whitespace-nowrap text-sm text-center">1</td>
-</tr>
-<tr>
-<td class="p-4 whitespace-nowrap text-sm">2024-05-14</td>
-<td class="p-4 whitespace-nowrap text-sm text-center">3</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-<button class="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-white font-semibold shadow-sm hover:bg-primary/90 transition-all">
-<span class="material-symbols-outlined">download</span>
-                        Download as Excel
-                    </button>
-<button class="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-black/10 dark:bg-white/10 text-black dark:text-white font-semibold hover:bg-black/20 dark:hover:bg-white/20 transition-all">
-<span class="material-symbols-outlined">data_object</span>
-                        Download as JSON
-                    </button>
-</div>
-</div>
-</main>
-</div>
 
+<main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12" id="main">
+    <!-- Search + downloads row -->
+    <section aria-labelledby="search-heading" class="max-w-4xl mx-auto mb-8">
+      <h2 id="search-heading" class="sr-only">Search by stock ticker</h2>
+
+      <div class="flex flex-col sm:flex-row gap-3">
+        <!-- Search input -->
+        <div class="relative flex-1">
+          <label for="ticker" class="sr-only">Stock ticker</label>
+          <input
+          id="ticker"
+          name="ticker"
+          type="text"
+          autocomplete="off"
+          placeholder="Enter stock ticker (e.g., AAPL, GOOGL)"
+          class="w-full pl-10 pr-4 py-3 rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-black/20 focus:ring-2 focus:ring-primary focus:border-primary text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40" />
+      </div>
+
+      <!-- Download buttons (to the right of search on sm+; stack on xs) -->
+      <div class="flex items-stretch sm:items-center gap-3">
+          <button
+          type="button"
+          class="flex items-center justify-center gap-2 px-4 sm:px-5 py-3 rounded-lg bg-primary text-white font-semibold shadow-sm hover:bg-primary/90"
+            aria-label="Download as Excel">
+          <span class="xs:inline">Excel</span>
+      </button>
+
+      <button
+      type="button"
+      class="flex items-center justify-center gap-2 px-4 sm:px-5 py-3 rounded-lg bg-black/10 dark:bg-white/10 text-black dark:text-white font-semibold hover:bg-black/20 dark:hover:bg-white/20" aria-label="Download as JSON">
+      <span class="xs:inline">JSON</span>
+  </button>
+</div>
+</div>
+</section>
+
+<!-- Existing table section unchanged -->
+<section aria-labelledby="sentiment-table-heading" class="max-w-4xl mx-auto">
+  <h2 id="sentiment-table-heading" class="sr-only">Daily sentiment table</h2>
+
+  <div class="flex flex-col sm:flex-row items-start gap-6">
+    <!-- Legend (left of table on sm+) -->
+    <aside aria-labelledby="legend-heading"
+    class="w-full sm:w-56 bg-white dark:bg-black/20 border border-black/10 dark:border-white/10 rounded-xl shadow-sm p-4">
+    <h3 id="legend-heading" class="text-sm font-semibold text-black/70 dark:text-white/70 mb-3">
+        Sentiment legend
+    </h3>
+    <ul class="space-y-2">
+        <li class="flex items-center gap-2">
+          <span class="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+          <span class="text-sm">1 — Positive</span>
+      </li>
+      <li class="flex items-center gap-2">
+          <span class="inline-block h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+          <span class="text-sm">2 — Negative</span>
+      </li>
+      <li class="flex items-center gap-2">
+          <span class="inline-block h-2.5 w-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></span>
+          <span class="text-sm">0 — Neutral</span>
+      </li>
+  </ul>
+</aside>
+
+<!-- Table card -->
+<div class="flex-1">
+  <div class="bg-white dark:bg-black/20 p-6 sm:p-8 rounded-xl shadow-sm">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left">
+        <caption class="sr-only">Daily sentiment scores for recent dates</caption>
+        <thead>
+              <tr class="border-b border-black/10 dark:border-white/10">
+                <th scope="col" class="p-4 text-sm font-semibold text-black/60 dark:text-white/60">Date</th>
+                <th scope="col" class="p-4 text-sm font-semibold text-black/60 dark:text-white/60 text-center">Sentiment score</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-black/10 dark:divide-white/10">
+          <tr>
+            <th scope="row" class="p-4 whitespace-nowrap text-sm font-medium">2024-05-20</th>
+            <td class="p-4 whitespace-nowrap text-sm text-center">1</td>
+        </tr>
+        <tr>
+            <th scope="row" class="p-4 whitespace-nowrap text-sm font-medium">2024-05-19</th>
+            <td class="p-4 whitespace-nowrap text-sm text-center">2</td>
+        </tr>
+        <tr>
+            <th scope="row" class="p-4 whitespace-nowrap text-sm font-medium">2024-05-18</th>
+            <td class="p-4 whitespace-nowrap text-sm text-center">3</td>
+        </tr>
+        <tr>
+            <th scope="row" class="p-4 whitespace-nowrap text-sm font-medium">2024-05-17</th>
+            <td class="p-4 whitespace-nowrap text-sm text-center">1</td>
+        </tr>
+        <tr>
+            <th scope="row" class="p-4 whitespace-nowrap text-sm font-medium">2024-05-16</th>
+            <td class="p-4 whitespace-nowrap text-sm text-center">2</td>
+        </tr>
+        <tr>
+            <th scope="row" class="p-4 whitespace-nowrap text-sm font-medium">2024-05-15</th>
+            <td class="p-4 whitespace-nowrap text-sm text-center">1</td>
+        </tr>
+        <tr>
+            <th scope="row" class="p-4 whitespace-nowrap text-sm font-medium">2024-05-14</th>
+            <td class="p-4 whitespace-nowrap text-sm text-center">3</td>
+        </tr>
+    </tbody>
+    </table>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+</main>
 </body>
+
+
 
 </html>

@@ -67,7 +67,7 @@ module.exports = {
         // { from: './src/robots.txt',       to: 'robots.txt' },
         // { from: './src/sitemap.xml',       to: 'sitemap.xml' },
         // { from: './src/locales', to: 'locales' },
-        // { from: './src/assets', to: 'assets' }
+        { from: './src/assets', to: 'assets' }
       ]
     })
   ],
