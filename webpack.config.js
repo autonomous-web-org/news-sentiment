@@ -3,7 +3,7 @@ const MiniCssExtractPlugin     = require('mini-css-extract-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserWebpackPlugin = require('terser-webpack-plugin');
 
-module.exports = {
+module.exports = (env, argv) => ({
   mode: "production",
   entry: {
     home_script: './src/_home/script.js',
@@ -88,4 +88,4 @@ module.exports = {
       }),
     ],
   }
-};
+});
