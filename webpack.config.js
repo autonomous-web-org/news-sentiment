@@ -20,6 +20,7 @@ module.exports = {
     filename: '[name].bundle.js',
     devtoolModuleFilenameTemplate: info => `file:///${info.resourcePath}`,
     clean: true, // Clean output directory before each build
+    publicPath: argv.mode === 'production' ? '/news-sentiment/' : '/', // set repo subpath for Pages
   },
   module: {
     rules: [
