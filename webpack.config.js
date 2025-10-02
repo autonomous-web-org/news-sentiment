@@ -47,7 +47,7 @@ module.exports = (env, argv) => ({
         test: /\.(png|jpe?g|gif|svg|woff2?|ttf|eot)$/, // Handle images and fonts
         type: 'asset/resource', // Use the built-in asset module
         generator: {
-          filename: './src/assets/[hash][ext][query]' // Specify output path for assets
+          filename: './assets/[hash][ext][query]' // Specify output path for assets
         }
       }
     ]
