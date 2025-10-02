@@ -133,7 +133,7 @@ async function loadTicker(tickerRaw) {
   setStatus(`Loading ${ticker.toUpperCase()}…`);
     // Convention: CSV files are named lowercased, e.g., aapl.csv
     // Sample confirms "date,news" header with numeric values 0,1,2 [attached].
-  const base = "/assets/data/";
+  const base = "./assets/data/";
   const urlLower = `${base}${ticker.toLowerCase()}.csv`;
 
   try {
