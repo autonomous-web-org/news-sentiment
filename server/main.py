@@ -1,4 +1,3 @@
-
 from dotenv import load_dotenv
 import os
 import sys
@@ -6,41 +5,30 @@ import json
 import base64
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # Optional (recommended): pip install google-generativeai
-# Ensure this library is installed in the PythonAnywhere virtualenv used by the scheduled task.
 try:
     import google.generativeai as genai
 except ImportError:
     genai = None
 
-
 load_dotenv()
-
 
 # ----------------------------
 # Configuration via env vars
 # ----------------------------
-REPO_JSON_URL = os.environ.get(
-    "REPO_JSON_URL",
-    # Default to the provided tickers JSON
-    "",
-)
-print(REPO_JSON_URL, "REPO_JSON_URL")
-
-# GitHub repo info where CSVs live
+REPO_JSON_URL = os.environ.get("REPO_JSON_URL", "")
 GH_OWNER = os.environ.get("GH_OWNER", "autonomous-web-org")
 GH_REPO = os.environ.get("GH_REPO", "news-sentiment")
 GH_BRANCH = os.environ.get("GH_BRANCH", "main")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 
-# Path of the tickers JSON inside the repo if updating it (optional but recommended)
-# The raw URL above points at src/assets/data/tickers_last_updated.json
+# Path of the tickers JSON inside the repo to advance after commits
 TICKERS_JSON_PATH_IN_REPO = os.environ.get(
     "TICKERS_JSON_PATH_IN_REPO",
     "src/assets/data/tickers_last_updated.json",
@@ -48,11 +36,10 @@ TICKERS_JSON_PATH_IN_REPO = os.environ.get(
 
 # Gemini settings
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")  # Free-tier friendly
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")  # prefer 2.5 flash
 
 # Logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-
 
 # ----------------------------
 # HTTP session with retries
@@ -71,9 +58,7 @@ def make_session() -> requests.Session:
     s.mount("http://", adapter)
     return s
 
-
 SESSION = make_session()
-
 
 # ----------------------------
 # Helpers: time and parsing
@@ -81,38 +66,40 @@ SESSION = make_session()
 def ms_to_utc_date(ms: int) -> datetime.date:
     return datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc).date()
 
-
 def date_to_ms_utc(d: datetime.date) -> int:
     dt = datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
     return int(dt.timestamp() * 1000)
 
-
 def today_utc_date() -> datetime.date:
     return datetime.now(timezone.utc).date()
-
 
 # ----------------------------
 # Fetch tickers JSON (raw)
 # ----------------------------
 def fetch_tickers_json(url: str) -> List[Dict[str, Any]]:
+    if not url:
+        raise RuntimeError("REPO_JSON_URL must be set")
     resp = SESSION.get(url, timeout=30)
     resp.raise_for_status()
     data = resp.json()
     if not isinstance(data, list):
-        raise ValueError("Tickers JSON must be a list")
+        raise ValueError("Tickers JSON must be a list of records")
     return data
-
 
 # ----------------------------
 # Gemini sentiment generation
 # ----------------------------
+def resolve_model_name(name: str) -> str:
+    # Accept 'models/gemini-2.5-flash' or 'gemini-2.5-flash'
+    return name.split("/", 1)[-1] if name.startswith("models/") else name
+
 def init_gemini():
     if genai is None:
         raise RuntimeError("google-generativeai is not installed in this environment")
     if not GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY or GOOGLE_API_KEY must be set")
     genai.configure(api_key=GEMINI_API_KEY)
-    return genai.GenerativeModel(GEMINI_MODEL)
+    return genai.GenerativeModel(resolve_model_name(GEMINI_MODEL))
 
 def list_models_supporting_generate_content() -> list[str]:
     """
@@ -126,7 +113,6 @@ def list_models_supporting_generate_content() -> list[str]:
         if "generateContent" in methods:
             names.append(getattr(m, "name", ""))
     return names
-
 
 def generate_sentiment(model, ticker: str, date_str: str) -> int:
     """
@@ -146,15 +132,12 @@ Task:
         resp = model.generate_content(prompt.strip())
         text = (resp.text or "").strip()
     except Exception as e:
-        # Surface the failure to caller; do not guess
         raise RuntimeError(f"Gemini API error: {e}") from e
 
     if text not in {"0", "1", "2"}:
-        # Strict mode: invalid output => hard fail
         raise RuntimeError(f"Invalid Gemini output for {ticker} {date_str}: {repr(text)}")
 
     return int(text)
-
 
 # ----------------------------
 # GitHub Contents API helpers
@@ -167,7 +150,6 @@ def gh_headers():
         "Accept": "application/vnd.github.v3+json",
     }
 
-
 def gh_get_content(path: str) -> Dict[str, Any]:
     url = f"https://api.github.com/repos/{GH_OWNER}/{GH_REPO}/contents/{path}"
     resp = SESSION.get(url, headers=gh_headers(), params={"ref": GH_BRANCH}, timeout=30)
@@ -175,7 +157,6 @@ def gh_get_content(path: str) -> Dict[str, Any]:
         return {"not_found": True}
     resp.raise_for_status()
     return resp.json()
-
 
 def gh_put_content(
     path: str,
@@ -195,73 +176,111 @@ def gh_put_content(
     resp.raise_for_status()
     return resp.json()
 
-
 # ----------------------------
-# CSV read/append logic
+# CSV helpers and batch upsert
 # ----------------------------
-def upsert_csv_for_ticker(ticker: str, date_str: str, sentiment: int):
+def get_csv_existing_dates(ticker: str) -> Tuple[Set[str], Optional[datetime.date], Dict[str, Any]]:
     """
-    Append a row "YYYY-MM-DD,<sentiment>" to webapp/src/assets/data/{ticker}.csv
-    If file does not exist, create with header "date,sentiment".
-    Avoid duplicate date rows
+    Return:
+      - set of YYYY-MM-DD strings present,
+      - max date present (or None),
+      - the metadata dict from Contents API (for reuse: sha, not_found)
     """
     path = f"webapp/src/assets/data/{ticker.lower()}.csv"
-    existing = gh_get_content(path)
+    meta = gh_get_content(path)
+    if meta.get("not_found"):
+        return set(), None, meta
+
+    if "content" in meta and meta.get("encoding") == "base64":
+        text = base64.b64decode(meta["content"]).decode("utf-8", errors="replace")
+    else:
+        text = meta.get("content", "") or ""
+
+    dates: Set[str] = set()
+    for ln in text.splitlines():
+        if not ln.strip() or ln.startswith("date,"):
+            continue
+        d = ln.split(",", 1)[0].strip()
+        if d:
+            dates.add(d)
+    max_date = max((datetime.fromisoformat(d).date() for d in dates), default=None)
+    return dates, max_date, meta
+
+def compute_days_to_fill(last_json_date: datetime.date, today: datetime.date, csv_dates: Set[str], csv_max_date: Optional[datetime.date]) -> List[datetime.date]:
+    """
+    From base = min(last_json_date, csv_max_date or last_json_date),
+    return all missing dates in (base, yesterday], skipping dates already in CSV.
+    """
+    base = last_json_date if csv_max_date is None else min(last_json_date, csv_max_date)
+    out: List[datetime.date] = []
+    d = base + timedelta(days=1)
+    while d < today:
+        if d.isoformat() not in csv_dates:
+            out.append(d)
+        d += timedelta(days=1)
+    return out
+
+def upsert_csv_batch(ticker: str, new_rows: List[Tuple[str, int]], meta: Dict[str, Any]) -> bool:
+    """
+    Append multiple rows to webapp/src/assets/data/{ticker}.csv in one commit.
+    new_rows: list of (date_str, sentiment).
+    Returns True if file content changed.
+    """
+    if not new_rows:
+        return False
+
+    path = f"webapp/src/assets/data/{ticker.lower()}.csv"
     header = "date,sentiment\n"
-    rows: List[str] = []
 
-    if existing.get("not_found"):
-        # New file
-        rows = [header, f"{date_str},{sentiment}\n"]
-        gh_put_content(
-            path,
-            "".join(rows),
-            message=f"{ticker.upper()}: add sentiment for {date_str}",
-        )
-        logging.info("Created CSV for %s with %s", ticker.upper(), date_str)
-        return
+    if meta.get("not_found"):
+        text = header + "".join(f"{d},{s}\n" for d, s in new_rows)
+        gh_put_content(path, text, message=f"{ticker.upper()}: add {len(new_rows)} days through {new_rows[-1][0]}")
+        logging.info("Created CSV for %s with %d new rows through %s", ticker.upper(), len(new_rows), new_rows[-1][0])
+        return True
 
-    # Existing file: decode and append if missing
-    if "content" in existing and existing.get("encoding") == "base64":
-        text = base64.b64decode(existing["content"]).decode("utf-8", errors="replace")
+    # Decode existing
+    if "content" in meta and meta.get("encoding") == "base64":
+        text = base64.b64decode(meta["content"]).decode("utf-8", errors="replace")
     else:
-        # Some responses might be served raw due to preview headers/configs
-        text = existing.get("content", "")
-        if not text:
-            # Fallback: treat as empty if unexpected
-            text = ""
+        text = meta.get("content", "") or ""
 
-    # Normalize lines
-    if not text.startswith("date,sentiment"):
-        # Insert header if missing
-        lines = [header] + [ln if ln.endswith("\n") else ln + "\n" for ln in text.splitlines() if ln.strip()]
-    else:
-        lines = [ln if ln.endswith("\n") else ln + "\n" for ln in text.splitlines()]
+    lines = [ln if ln.endswith("\n") else ln + "\n" for ln in text.splitlines()]
+    if not lines or not lines[0].startswith("date,sentiment"):
+        lines = [header] + [ln for ln in lines if ln.strip()]
 
-    # Avoid duplicate date rows
-    date_exists = any(ln.split(",")[0] == date_str for ln in lines if ln and not ln.startswith("date,"))
-    if not date_exists:
-        lines.append(f"{date_str},{sentiment}\n")
-    else:
-        logging.info("CSV for %s already has %s; skipping append", ticker.upper(), date_str)
+    # Build set to avoid duplicates
+    present = set()
+    for ln in lines:
+        if ln.startswith("date,") or not ln.strip():
+            continue
+        present.add(ln.split(",", 1)[0])
+
+    appended = 0
+    for d, s in new_rows:
+        if d not in present:
+            lines.append(f"{d},{s}\n")
+            appended += 1
+
+    if appended == 0:
+        logging.info("CSV for %s already had all %d rows; no commit", ticker.upper(), len(new_rows))
+        return False
 
     gh_put_content(
         path,
         "".join(lines),
-        message=f"{ticker.upper()}: update sentiment for {date_str}",
-        sha=existing.get("sha"),
+        message=f"{ticker.upper()}: add {appended} days through {new_rows[-1][0]}",
+        sha=meta.get("sha"),
     )
-    logging.info("Updated CSV for %s with %s", ticker.upper(), date_str)
-
+    logging.info("Updated CSV for %s with %d rows through %s", ticker.upper(), appended, new_rows[-1][0])
+    return True
 
 # ----------------------------
-# Optional: update tickers_last_updated.json
+# Advance tickers_last_updated.json
 # ----------------------------
 def update_tickers_json(target_date_by_ticker: Dict[str, datetime.date]):
     """
     Move each ticker's lastUpdated to the processed target date (ms since epoch).
     """
-    # Fetch current file via Contents API
     meta = gh_get_content(TICKERS_JSON_PATH_IN_REPO)
     if meta.get("not_found"):
         logging.warning("tickers_last_updated.json not found in repo path; skipping JSON update")
@@ -270,7 +289,7 @@ def update_tickers_json(target_date_by_ticker: Dict[str, datetime.date]):
     if "content" in meta and meta.get("encoding") == "base64":
         text = base64.b64decode(meta["content"]).decode("utf-8", errors="replace")
     else:
-        text = meta.get("content", "")
+        text = meta.get("content", "") or ""
 
     try:
         data = json.loads(text)
@@ -282,7 +301,6 @@ def update_tickers_json(target_date_by_ticker: Dict[str, datetime.date]):
         logging.warning("tickers_last_updated.json is not a list; skipping update")
         return
 
-    # Build fast lookup
     by_ticker = {str(item.get("ticker") or item.get("symbol")).lower(): item for item in data if isinstance(item, dict)}
 
     changed = False
@@ -305,7 +323,6 @@ def update_tickers_json(target_date_by_ticker: Dict[str, datetime.date]):
     )
     logging.info("Updated tickers_last_updated.json")
 
-
 # ----------------------------
 # Main workflow
 # ----------------------------
@@ -319,7 +336,6 @@ def main() -> int:
     # Initialize Gemini once
     try:
         model = init_gemini()
-        # print(list_models_supporting_generate_content())
     except Exception:
         logging.exception("Gemini init failed")
         return 3
@@ -340,35 +356,47 @@ def main() -> int:
         except Exception:
             continue
 
-        last_date = ms_to_utc_date(ms)
-        delta_days = (today - last_date).days
+        last_json_date = ms_to_utc_date(ms)
 
-        if delta_days >= 2:
-            target_date = last_date + timedelta(days=1)
-            date_str = target_date.isoformat()
+        # Determine all missing days up to yesterday, skipping any already in CSV
+        try:
+            csv_dates, csv_max_date, meta = get_csv_existing_dates(str(ticker))
+        except Exception:
+            logging.exception("Failed to read CSV for %s", ticker)
+            return 6
 
-            # STRICT: if Gemini cannot produce a valid label, end the task immediately
-            try:
-                sentiment = generate_sentiment(model, str(ticker).upper(), date_str)
-            except RuntimeError as e:
-                logging.error("Stopping run: %s", e)
-                return 5  # non-zero exit so scheduler shows failure
+        days = compute_days_to_fill(last_json_date, today, csv_dates, csv_max_date)
+        if not days:
+            logging.info("No missing days for %s between %s and %s",
+                         ticker, last_json_date.isoformat(), (today - timedelta(days=1)).isoformat())
+            continue
 
-            try:
-                upsert_csv_for_ticker(str(ticker), date_str, sentiment)
-                processed_dates[str(ticker)] = target_date
-            except Exception:
-                logging.exception("Failed to update CSV for %s", ticker)
-                return 6  # also stop, to avoid partial/ambiguous state
-        else:
-            logging.info("Skipping %s; lastUpdated=%s (delta %d days)", ticker, last_date.isoformat(), delta_days)
+        # STRICT: generate all sentiments first; abort on any failure (no fallback)
+        try:
+            new_rows: List[Tuple[str, int]] = []
+            for d in days:
+                date_str = d.isoformat()
+                s = generate_sentiment(model, str(ticker).upper(), date_str)
+                new_rows.append((date_str, s))
+        except RuntimeError as e:
+            logging.error("Stopping run: %s", e)
+            return 5
+
+        # Write once per ticker; only advance JSON if something changed
+        try:
+            changed = upsert_csv_batch(str(ticker), new_rows, meta)
+            if changed:
+                processed_dates[str(ticker)] = days[-1]
+        except Exception:
+            logging.exception("Failed to batch-update CSV for %s", ticker)
+            return 6
 
     if processed_dates:
         try:
             update_tickers_json(processed_dates)
         except Exception:
-            logging.exception("Failed to update tickers_last_updated.json; continuing")
-            return 7  # fail hard if preferred
+            logging.exception("Failed to update tickers_last_updated.json")
+            return 7
 
     return 0
 
