@@ -151,30 +151,61 @@ def list_models_supporting_generate_content() -> list[str]:
             names.append(getattr(m, "name", ""))
     return names
 
-def generate_sentiment(model, ticker: str, date_str: str) -> int:
+def research_with_grounding(model, ticker: str, date_str: str) -> str:
     """
-    Strict classification: returns ONLY one of {0,1,2}.
-    On any parsing error or API error, raises RuntimeError (no fallback).
+    Returns a concise grounded summary of news for the ticker/date.
+    Uses the same model shim but with Google Search enabled in init_gemini.
     """
     prompt = f"""
-You are a financial news sentiment classifier.
-
-Task:
-- Consider major public news coverage for ticker "{ticker}" on {date_str} (UTC).
-- Classify the overall daily sentiment as:
-  0 = neutral, 1 = positive, 2 = negative.
-- Respond with a single character: 0 or 1 or 2. No extra text.
+Summarize public news coverage for {ticker} on {date_str} (UTC) in 3-5 short bullet points
+focused only on that day. Include only facts and high-level analyst actions.
 """
+    resp = model.generate_content(prompt.strip())
+    return (getattr(resp, "text", "") or "").strip()
+
+def classify_without_tools(client: "genai.Client", model_id: str, context: str, ticker: str, date_str: str) -> int:
+    """
+    Second call: turn OFF grounding/tools and enforce structured output (single int).
+    """
+    cfg = types.GenerateContentConfig(
+        # Force strict JSON integer output
+        response_mime_type="application/json",
+        # response_schema=types.Schema(type=types.Type.INT),
+        # Optional: reduce creativity
+        temperature=0.0,
+    )
+    prompt = f"""
+Based only on the context below, classify the overall sentiment for {ticker} on {date_str} as:
+0 = neutral, 1 = positive, 2 = negative.
+Respond with a single JSON integer, no text.
+
+Context:
+{context}
+"""
+    # New direct client call without tools
+    resp = client.models.generate_content(
+        model=model_id,
+        contents=prompt.strip(),
+        config=cfg,
+    )
+    txt = (getattr(resp, "text", "") or "").strip()
     try:
-        resp = model.generate_content(prompt.strip())
-        text = (getattr(resp, "text", "") or "").strip()
-    except Exception as e:
-        raise RuntimeError(f"Gemini API error: {e}") from e
+        val = int(json.loads(txt))
+    except Exception:
+        raise RuntimeError(f"Structured classification failed: {txt!r}")
+    if val not in (0, 1, 2):
+        raise RuntimeError(f"Classification out of range: {val!r}")
+    return val
 
-    if text not in {"0", "1", "2"}:
-        raise RuntimeError(f"Invalid Gemini output for {ticker} {date_str}: {repr(text)}")
+def generate_sentiment(model_shim, ticker: str, date_str: str) -> int:
+    # Step 1: grounded research (uses tools if enabled in init_gemini)
+    summary = research_with_grounding(model_shim, ticker, date_str)
 
-    return int(text)
+    # Step 2: strict labeling without tools using the raw client
+    # Access underlying client/model from the shim:
+    client = model_shim._client
+    model_id = model_shim._model_id
+    return classify_without_tools(client, model_id, summary, ticker, date_str)
 
 # ----------------------------
 # GitHub Contents API helpers
