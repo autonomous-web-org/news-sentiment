@@ -11,11 +11,14 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# Optional (recommended): pip install google-generativeai
+# New SDK
+# pip install -U google-genai python-dotenv requests urllib3
 try:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types
 except ImportError:
     genai = None
+    types = None
 
 load_dotenv()
 
@@ -35,8 +38,12 @@ TICKERS_JSON_PATH_IN_REPO = os.environ.get(
 )
 
 # Gemini settings
+# The new SDK reads GOOGLE_API_KEY by default; keep compatibility with GEMINI_API_KEY.
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+if GEMINI_API_KEY and not os.environ.get("GOOGLE_API_KEY"):
+    os.environ["GOOGLE_API_KEY"] = GEMINI_API_KEY  # let genai.Client() auto-pick the key
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")  # prefer 2.5 flash
+ENABLE_GOOGLE_SEARCH = os.environ.get("ENABLE_GOOGLE_SEARCH", "false").lower() in {"1", "true", "yes"}  # optional grounding
 
 # Logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -87,30 +94,60 @@ def fetch_tickers_json(url: str) -> List[Dict[str, Any]]:
     return data
 
 # ----------------------------
-# Gemini sentiment generation
+# Gemini via new SDK (google-genai)
 # ----------------------------
 def resolve_model_name(name: str) -> str:
     # Accept 'models/gemini-2.5-flash' or 'gemini-2.5-flash'
     return name.split("/", 1)[-1] if name.startswith("models/") else name
 
+class _ModelShim:
+    """
+    Wraps the new genai.Client to maintain the old model.generate_content(...) call pattern.
+    """
+    def __init__(self, client: "genai.Client", model_id: str, config: Optional["types.GenerateContentConfig"]):
+        self._client = client
+        self._model_id = model_id
+        self._config = config
+
+    def generate_content(self, contents: str):
+        return self._client.models.generate_content(
+            model=self._model_id,
+            contents=contents,
+            config=self._config,
+        )
+
 def init_gemini():
-    if genai is None:
-        raise RuntimeError("google-generativeai is not installed in this environment")
-    if not GEMINI_API_KEY:
-        raise RuntimeError("GEMINI_API_KEY or GOOGLE_API_KEY must be set")
-    genai.configure(api_key=GEMINI_API_KEY)
-    return genai.GenerativeModel(resolve_model_name(GEMINI_MODEL))
+    """
+    Initialize google-genai client and return a shim with generate_content to keep the existing callsite unchanged.
+    Optionally enables Google Search grounding if ENABLE_GOOGLE_SEARCH is true.
+    """
+    if genai is None or types is None:
+        raise RuntimeError("google-genai is not installed in this environment")
+    # genai.Client() reads GOOGLE_API_KEY by default
+    client = genai.Client()  # Developer API client; set GOOGLE_GENAI_USE_VERTEXAI for Vertex if needed
+    model_id = resolve_model_name(GEMINI_MODEL)
+
+    config = None
+    if ENABLE_GOOGLE_SEARCH:
+        # Enable Google Search grounding tool
+        # See: https://ai.google.dev/gemini-api/docs/google-search
+        search_tool = types.Tool(google_search=types.GoogleSearch())
+        config = types.GenerateContentConfig(tools=[search_tool])
+
+    return _ModelShim(client, model_id, config)
 
 def list_models_supporting_generate_content() -> list[str]:
     """
-    Uses existing init_gemini() to ensure google.generativeai is configured,
-    then returns model names that support generateContent.
+    Uses the new google-genai client to list models that support generateContent.
     """
+    if genai is None:
+        raise RuntimeError("google-genai is not installed in this environment")
+    client = genai.Client()
     names: list[str] = []
-    for m in genai.list_models():
-        # Handle both historical and newer field names
-        methods = set(getattr(m, "supported_generation_methods", [])) | set(getattr(m, "supported_actions", []))
-        if "generateContent" in methods:
+    for m in client.models.list():
+        actions = set(getattr(m, "supported_actions", []) or [])
+        if "generateContent" in actions:
+            # Return full name as listed (often prefixed with 'models/')
             names.append(getattr(m, "name", ""))
     return names
 
@@ -130,7 +167,7 @@ Task:
 """
     try:
         resp = model.generate_content(prompt.strip())
-        text = (resp.text or "").strip()
+        text = (getattr(resp, "text", "") or "").strip()
     except Exception as e:
         raise RuntimeError(f"Gemini API error: {e}") from e
 
@@ -333,7 +370,7 @@ def main() -> int:
         logging.exception("Failed to load tickers JSON")
         return 4
 
-    # Initialize Gemini once
+    # Initialize Gemini once (new SDK via shim)
     try:
         model = init_gemini()
     except Exception:
@@ -399,7 +436,6 @@ def main() -> int:
             return 7
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())
