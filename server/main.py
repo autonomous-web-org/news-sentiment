@@ -212,12 +212,6 @@ def gh_headers():
         "Accept": "application/vnd.github.v3+json",
     }
 
-def path_tickers_json(exchange: str) -> str:
-    return f"{DATA_PATH}/{exchange}/tickers_last_updated.json"
-
-def path_ticker_data(exchange: str, ticker: str) -> str:
-    return f"{DATA_PATH}/{exchange}/{ticker.lower()}.csv"
-
 # 2) Path helpers
 def path_tickers_json(exchange: str) -> str:
     return f"{DATA_PATH}/{exchange}/tickers_last_updated.json"
@@ -235,14 +229,6 @@ def gh_get_json(path: str):
     else:
         text = meta.get("content", "") or ""
     return json.loads(text), meta
-
-def load_exchange_tickers(exchange: str) -> list[dict]:
-    data, _meta = gh_get_json(path_tickers_json(exchange))
-    if data is None:
-        return []
-    if not isinstance(data, list):
-        raise RuntimeError(f"{path_tickers_json(exchange)} must be a list of objects")
-    return data
 
 # 4) CSV helpers (exchange-aware)
 def get_csv_existing_dates(exchange: str, ticker: str):
