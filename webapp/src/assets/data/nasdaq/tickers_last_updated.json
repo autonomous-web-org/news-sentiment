@@ -2,5 +2,9 @@
   {
     "ticker": "aapl",
     "lastUpdated": 1759449600000
+  },
+  {
+    "ticker": "msft",
+    "lastUpdated": 1759449600000
   }
 ]
