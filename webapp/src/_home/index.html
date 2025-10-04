@@ -38,32 +38,56 @@
     <main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12" id="main">
         <!-- Search + downloads row -->
         <section aria-labelledby="search-heading" class="max-w-4xl mx-auto mb-8">
-            <h2 id="search-heading" class="sr-only">Search by stock ticker</h2>
+          <h2 id="search-heading" class="sr-only">Search by stock ticker</h2>
 
-            <div class="flex flex-col sm:flex-row gap-3">
-                <!-- Search input -->
-                <div class="relative flex-1">
-                    <label for="ticker" class="sr-only">Stock ticker</label>
-                    <input id="ticker" name="ticker" type="text" autocomplete="off"
-                        placeholder="Enter stock ticker (e.g., AAPL, GOOGL)"
-                        class="w-full p-3 rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-black/20 focus:ring-2 focus:ring-primary focus:border-primary text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40" />
-                </div>
-
-                <!-- Download buttons (to the right of search on sm+; stack on xs) -->
-                <div class="flex items-stretch sm:items-center gap-3">
-                    <button type="button" id="download-excel"
-                        class="flex items-center justify-center gap-2 px-4 sm:px-5 py-3 rounded-lg bg-primary text-white font-semibold shadow-sm hover:bg-primary/90"
-                        aria-label="Download as Excel">
-                        <span class="xs:inline">Excel</span>
-                    </button>
-
-                    <button type="button" id="download-json"
-                        class="flex items-center justify-center gap-2 px-4 sm:px-5 py-3 rounded-lg bg-black/10 dark:bg-white/10 text-black dark:text-white font-semibold hover:bg-black/20 dark:hover:bg-white/20"
-                        aria-label="Download as JSON">
-                        <span class="xs:inline">JSON</span>
-                    </button>
-                </div>
+          <div class="flex flex-col sm:flex-row gap-3">
+            <div class="relative sm:w-48">
+              <!-- <label for="exchange" class="sr-ony">Exchange</label> -->
+              <select
+                id="exchange"
+                name="exchange"
+                class="w-full p-3 rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-black/20 focus:ring-2 focus:ring-primary focus:border-primary text-black dark:text-white"
+              >
+                <option value="" disabled selected>Select exchange</option>
+                <option value="NASDAQ" selected>NASDAQ</option>
+                <option value="NYSE">NYSE</option>
+                <option value="BSE">BSE</option>
+                <option value="NSE">NSE</option>
+              </select>
             </div>
+
+            <div class="relative flex-1">
+              <label for="ticker" class="sr-only">Stock ticker</label>
+              <input
+                id="ticker"
+                name="ticker"
+                type="text"
+                autocomplete="off"
+                placeholder="Enter stock ticker (e.g., AAPL, GOOGL)"
+                class="w-full p-3 rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-black/20 focus:ring-2 focus:ring-primary focus:border-primary text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40"
+              />
+            </div>
+
+            <div class="flex items-stretch sm:items-center gap-3">
+              <button
+                type="button"
+                id="download-excel"
+                class="flex items-center justify-center gap-2 px-4 sm:px-5 py-3 rounded-lg bg-primary text-white font-semibold shadow-sm hover:bg-primary/90"
+                aria-label="Download as Excel"
+              >
+                <span class="xs:inline">Excel</span>
+              </button>
+
+              <button
+                type="button"
+                id="download-json"
+                class="flex items-center justify-center gap-2 px-4 sm:px-5 py-3 rounded-lg bg-black/10 dark:bg:white/10 text-black dark:text-white font-semibold hover:bg-black/20 dark:hover:bg-white/20"
+                aria-label="Download as JSON"
+              >
+                <span class="xs:inline">JSON</span>
+              </button>
+            </div>
+          </div>
         </section>
 
         <!-- Existing table section unchanged -->

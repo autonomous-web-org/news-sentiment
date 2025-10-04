@@ -38,7 +38,8 @@ registerToggle();
 
 
 const rowsEl = document.getElementById("sentiment-rows");
-const input = document.getElementById("ticker");
+const tickerInp = document.getElementById("ticker");
+const exchangeInp = document.getElementById("exchange");
 const statusEl = document.getElementById("status");
 const btnExcel = document.getElementById("download-excel");
 const btnJSON = document.getElementById("download-json");
@@ -120,10 +121,11 @@ function renderRows(items) {
   rowsEl.appendChild(frag);
 }
 
-async function loadTicker(tickerRaw) {
+async function loadTicker(tickerRaw, exchangeRaw) {
     const ticker = (tickerRaw || "").trim();
-    if (!ticker) {
-      setStatus("Enter a ticker symbol to load data.");
+    const exchange = (exchangeRaw || "").trim();
+    if (!ticker || !exchange) {
+      setStatus("Select a Exchange and Enter a ticker symbol to load data.");
       currentTicker = "";
       currentData = [];
       clearTable();
@@ -133,8 +135,8 @@ async function loadTicker(tickerRaw) {
   setStatus(`Loading ${ticker.toUpperCase()}...`);
     // Convention: CSV files are named lowercased, e.g., aapl.csv
     // Sample confirms "date,sentiment" header with numeric values 0,1,2 [attached].
-  const base = "./assets/data/";
-  const urlLower = `${base}${ticker.toLowerCase()}.csv`;
+  const base = "./assets/data";
+  const urlLower = `${base}/${exchange.toLowerCase()}/${ticker.toLowerCase()}.csv`;
 
   try {
       const res = await fetch(urlLower);
@@ -176,17 +178,20 @@ async function loadTicker(tickerRaw) {
 
 
   const debouncedLoad = debounce(() => {
-    if (!input) return;
-    const v = input.value.trim();
-    if (v) loadTicker(v);
+    if (!tickerInp || !exchangeInp) return;
+    const v = tickerInp.value.trim();
+    const exchange = exchangeInp.value.trim();
+    loadTicker(v, exchange);
   }, 900);
 
-  // Trigger on Enter or when input loses focus (optional)
-input?.addEventListener("keyup", (e) => {
+  // Trigger on Enter or when tickerInp loses focus (optional)
+tickerInp?.addEventListener("keyup", (e) => {
     debouncedLoad();
-    // if (e.key === "Enter") loadTicker(input.value);
+    // if (e.key === "Enter") loadTicker(tickerInp.value);
 });
-input?.addEventListener("change", () => loadTicker(input.value));
+tickerInp?.addEventListener("change", () => {
+  debouncedLoad();
+});
 
   // Downloads
 btnExcel?.addEventListener("click", () => {
