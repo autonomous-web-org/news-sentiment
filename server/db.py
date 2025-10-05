@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Creates MySQL tables and yearly date partitions on PythonAnywhere over an SSH tunnel.
 
@@ -17,17 +16,17 @@ import pymysql
 # Configuration (edit these)
 # -----------------------------
 SSH_HOST = "ssh.pythonanywhere.com"      # or "ssh.eu.pythonanywhere.com"
-SSH_USERNAME = "your_pa_username"
-SSH_PASSWORD = "your_pa_ssh_password"    # PythonAnywhere SSH/password auth
+SSH_USERNAME = "username"
+SSH_PASSWORD = "account_pass"    # PythonAnywhere SSH/password auth
 
-PA_DB_HOST = "your_pa_username.mysql.pythonanywhere-services.com"  # or *.eu.* for EU
-PA_DB_USER = "your_pa_db_username"
-PA_DB_PASSWORD = "your_pa_db_password"
-PA_DB_NAME = "your_pa_username$yourdbname"
+PA_DB_HOST = SSH_USERNAME+".mysql.pythonanywhere-services.com"  # or *.eu.* for EU
+PA_DB_USER = SSH_USERNAME
+PA_DB_PASSWORD = "db_pass"
+PA_DB_NAME = "dbname"
 
 # Partition years to create (inclusive range + MAXVALUE)
-FIRST_YEAR = 2020
-LAST_YEAR = dt.date.today().year + 2
+FIRST_YEAR = 2019
+LAST_YEAR = dt.date.today().year + 6
 
 # -----------------------------
 # SQL DDL
