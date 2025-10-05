@@ -5,8 +5,13 @@ Prereqs:
   pip install sshtunnel PyMySQL
 """
 
-import datetime as dt
 import sys
+import os
+import csv
+import datetime as dt
+from typing import Optional, Tuple, List, Dict, Set
+from datetime import datetime, timezone
+
 from contextlib import contextmanager
 
 from sshtunnel import SSHTunnelForwarder
@@ -17,12 +22,12 @@ import pymysql
 # -----------------------------
 SSH_HOST = "ssh.pythonanywhere.com"      # or "ssh.eu.pythonanywhere.com"
 SSH_USERNAME = "username"
-SSH_PASSWORD = "account_pass"    # PythonAnywhere SSH/password auth
+SSH_PASSWORD = ""    # PythonAnywhere SSH/password auth
 
 PA_DB_HOST = SSH_USERNAME+".mysql.pythonanywhere-services.com"  # or *.eu.* for EU
 PA_DB_USER = SSH_USERNAME
-PA_DB_PASSWORD = "db_pass"
-PA_DB_NAME = "dbname"
+PA_DB_PASSWORD = ""
+PA_DB_NAME = "username$default"
 
 # Partition years to create (inclusive range + MAXVALUE)
 FIRST_YEAR = 2019
@@ -133,17 +138,188 @@ def mysql_conn_over_ssh():
         finally:
             conn.close()
 
+
+# --------------- DB helpers: get-or-create ---------------
+
+def ensure_exchange(cur, code: str) -> int:
+    cur.execute("SELECT id FROM exchanges WHERE code = %s", (code.lower(),))
+    row = cur.fetchone()
+    if row:
+        return row[0] if isinstance(row, tuple) else row["id"]
+    cur.execute("INSERT INTO exchanges (code) VALUES (%s)", (code.lower(),))
+    return cur.lastrowid
+
+def ensure_ticker(cur, exchange_id: int, symbol: str) -> int:
+    cur.execute("""
+        SELECT id FROM tickers
+        WHERE exchange_id = %s AND symbol = %s
+    """, (exchange_id, symbol.upper()))
+    row = cur.fetchone()
+    if row:
+        return row[0] if isinstance(row, tuple) else row["id"]
+    cur.execute("""
+        INSERT INTO tickers (exchange_id, symbol, active, last_updated)
+        VALUES (%s, %s, 1, NOW(3))
+    """, (exchange_id, symbol.upper()))
+    return cur.lastrowid
+
+# --------------- CSV ingestion (safe, portable) ---------------
+
+def load_csv_with_executemany(conn, ticker_id: int, csv_path: str, batch_size: int = 1000) -> int:
+    """
+    Reads date,sentiment CSV and upserts into sentiment_daily in batches.
+    Uses INSERT ... ON DUPLICATE KEY UPDATE for idempotency.
+    """
+    total = 0
+    upsert_sql = """
+        INSERT INTO sentiment_daily (ticker_id, date, sentiment, last_updated)
+        VALUES (%s, %s, %s, NOW(3))
+        ON DUPLICATE KEY UPDATE
+          sentiment = VALUES(sentiment),
+          last_updated = VALUES(last_updated)
+    """
+    batch: List[Tuple[int, str, int]] = []
+    with open(csv_path, "r", newline="", encoding="utf-8") as f, conn.cursor() as cur:
+        rdr = csv.reader(f)
+        header = next(rdr, None)
+        # Expect header ["date","sentiment"]
+        for row in rdr:
+            if not row or len(row) < 2:
+                continue
+            d, s = row[0].strip(), row[1].strip()
+            if not d:
+                continue
+            try:
+                # Validate date format
+                datetime.fromisoformat(d)
+                s_int = int(s)
+            except Exception:
+                continue
+            batch.append((ticker_id, d, s_int))
+            if len(batch) >= batch_size:
+                cur.executemany(upsert_sql, batch)
+                total += len(batch)
+                batch.clear()
+        if batch:
+            cur.executemany(upsert_sql, batch)
+            total += len(batch)
+    return total
+
+# --------------- Optional: CSV ingestion via LOAD DATA LOCAL INFILE ---------------
+
+def load_csv_with_load_data(conn, ticker_id: int, csv_path: str) -> int:
+    """
+    Fast path using LOAD DATA LOCAL INFILE directly into sentiment_daily.
+    Requires local_infile=True on the PyMySQL connection and server-side allowance.
+    """
+    # MySQL counts affected rows differently on ON DUPLICATE; use ROW_COUNT() heuristic after the load if needed.
+    # Path must be quoted, and LOCAL requires enabling in both client and server.
+    q = f"""
+    LOAD DATA LOCAL INFILE %s
+    INTO TABLE sentiment_daily
+    FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
+    LINES TERMINATED BY '\n'
+    IGNORE 1 LINES
+    (@date_str, @sentiment)
+    SET
+      ticker_id = {int(ticker_id)},
+      date = STR_TO_DATE(@date_str, '%Y-%m-%d'),
+      sentiment = @sentiment,
+      last_updated = NOW(3)
+    """
+    with conn.cursor() as cur:
+        cur.execute(q, (csv_path,))
+        # Affected rows semantics: 1 per insert, 2 per update; exact inserted vs updated split is not provided.
+        # Return cursor.rowcount as a proxy for processed input lines.
+        return cur.rowcount or 0
+
+# --------------- Cursor updater from JSON ---------------
+
+def update_cursor_from_json(conn, json_path: str, exchange_code: str):
+    """
+    Reads tickers_last_updated.json [{ticker, lastUpdated}] and updates ticker_sentiment_cursor.
+    Also ensures exchange/tickers exist.
+    """
+    import json
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    if not isinstance(data, list):
+        raise RuntimeError(f"{json_path} is not a list of objects")
+
+    with conn.cursor() as cur:
+        ex_id = ensure_exchange(cur, exchange_code)
+        for obj in data:
+            ticker = (obj.get("ticker") or obj.get("symbol") or "").strip()
+            ms = obj.get("lastUpdated") or obj.get("last_updated")
+            if not ticker or ms is None:
+                continue
+            try:
+                ms_int = int(ms)
+            except Exception:
+                continue
+            # Ensure ticker exists
+            tid = ensure_ticker(cur, ex_id, ticker)
+            # Store the cursor as the UTC date at midnight
+            dt_utc = datetime.fromtimestamp(ms_int / 1000.0, tz=timezone.utc)
+            dt_midnight = datetime(dt_utc.year, dt_utc.month, dt_utc.day)
+            cur.execute("""
+                INSERT INTO ticker_sentiment_cursor (ticker_id, last_updated)
+                VALUES (%s, %s)
+                ON DUPLICATE KEY UPDATE last_updated = VALUES(last_updated)
+            """, (tid, dt_midnight))
+
+# --------------- High-level directory migrator ---------------
+
+def migrate_data_dir(conn, data_root: str, use_load_data: bool = False) -> None:
+    """
+    Scans data_root/{exchange}/ for *.csv and tickers_last_updated.json and loads them.
+    - Ensures exchange and tickers exist.
+    - Loads CSVs into sentiment_daily.
+    - Updates ticker_sentiment_cursor from JSON.
+    """
+    for exchange_code in sorted(os.listdir(data_root)):
+        ex_dir = os.path.join(data_root, exchange_code)
+        if not os.path.isdir(ex_dir):
+            continue
+        # First update cursor from JSON if present
+        json_path = os.path.join(ex_dir, "tickers_last_updated.json")
+        if os.path.isfile(json_path):
+            update_cursor_from_json(conn, json_path, exchange_code)
+
+        # Then ingest all CSVs
+        for name in sorted(os.listdir(ex_dir)):
+            if not name.lower().endswith(".csv"):
+                continue
+            ticker = os.path.splitext(name)[0]
+            csv_path = os.path.join(ex_dir, name)
+            with conn.cursor() as cur:
+                ex_id = ensure_exchange(cur, exchange_code)
+                tid = ensure_ticker(cur, ex_id, ticker)
+            if use_load_data:
+                # Ensure the connection was created with local_infile=True
+                processed = load_csv_with_load_data(conn, tid, csv_path)
+            else:
+                processed = load_csv_with_executemany(conn, tid, csv_path)
+            print(f"[{exchange_code}] {ticker}: loaded ~{processed} rows from {name}")
+
+
 def main():
     try:
         with mysql_conn_over_ssh() as conn:
+            # Ensure schema exists (already in your script)
             cur = conn.cursor()
             for ddl in DDL_STATEMENTS:
                 cur.execute(ddl)
             rebuild_partitions_if_needed(cur)
-            print("Schema created and partitions ensured.")
+
+            # Migrate files under ./data/{exchange}/
+            data_root = "./data"
+            migrate_data_dir(conn, data_root, use_load_data=False)  # set True to use LOAD DATA LOCAL
+            print("Migration complete.")
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
