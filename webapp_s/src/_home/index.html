@@ -92,50 +92,96 @@
 
         <!-- Existing table section unchanged -->
         <section aria-labelledby="sentiment-table-heading" class="max-w-4xl mx-auto">
-            <!-- <h2 id="sentiment-table-heading" class="sr-nly">Daily sentiment table</h2> -->
+          <!-- <h2 id="sentiment-table-heading" class="sr-nly">Daily sentiment table</h2> -->
 
-            <div class="flex flex-col sm:flex-row items-start gap-6">
-                <!-- Legend (left of table on sm+) -->
-                <aside aria-labelledby="legend-heading"
-                    class="w-full sm:w-56 bg-white dark:bg-black/20 border border-black/10 dark:border-white/10 rounded-xl shadow-sm p-4">
-                    <h3 id="legend-heading" class="text-sm font-semibold text-black/70 dark:text-white/70 mb-3">
-                        Sentiment legend
-                    </h3>
-                    <ul class="space-y-2">
-                        <li class="flex items-center gap-2">
-                            <span class="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-                            <span class="text-sm">1 — Positive</span>
-                        </li>
-                        <li class="flex items-center gap-2">
-                            <span class="inline-block h-2.5 w-2.5 rounded-full bg-rose-500"></span>
-                            <span class="text-sm">2 — Negative</span>
-                        </li>
-                        <li class="flex items-center gap-2">
-                            <span class="inline-block h-2.5 w-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></span>
-                            <span class="text-sm">0 — Neutral</span>
-                        </li>
-                    </ul>
-                </aside>
+          <div class="flex flex-col sm:flex-row items-start gap-6">
+            <!-- Legend (left of table on sm+) -->
+            <aside aria-labelledby="legend-heading"
+              class="w-full sm:w-56 bg-white dark:bg-black/20 border border-black/10 dark:border-white/10 rounded-xl shadow-sm p-4">
+              <h3 id="legend-heading" class="text-sm font-semibold text-black/70 dark:text-white/70 mb-3">
+                Sentiment legend
+              </h3>
+              <ul class="space-y-2">
+                <li class="flex items-center gap-2">
+                  <span class="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                  <span class="text-sm">1 — Positive</span>
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="inline-block h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+                  <span class="text-sm">2 — Negative</span>
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="inline-block h-2.5 w-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></span>
+                  <span class="text-sm">0 — Neutral</span>
+                </li>
+              </ul>
+            </aside>
 
-                <!-- Table card -->
-                <div class="flex-1 bg-white dark:bg-black/20 p-3 overflow-auto max-h-[60vh] w-full rounded-xl shadow-sm">
-                        <p id="status" class="sr-ony" aria-live="polite"></p>
-                        <table class="w-full text-left">
-                            <!-- <caption class="sr-only">Daily sentiment scores for recent dates</caption> -->
-                            <thead class="top-0 sticky bg-white dark:bg-black">
-                                <tr class="border-b border-black/10 dark:border-white/10">
-                                    <th scope="col" class="p-4 text-sm font-semibold text-black/60 dark:text-white/60">
-                                        Date</th>
-                                    <th scope="col"
-                                        class="p-4 text-sm font-semibold text-black/60 dark:text-white/60 text-center">
-                                        Sentiment score</th>
-                                </tr>
-                            </thead>
-                            <tbody id="sentiment-rows" class="divide-y divide-black/10 dark:divide-white/10"></tbody>
-                        </table>
+            <!-- Card: toggle + views -->
+            <div class="flex-1">
+              <!-- Live status for screen readers -->
+              <p id="status" class="sr-ony" aria-live="polite"></p>
+
+              <!-- View toggle -->
+              <div class="mb-3 flex justify-start bg-white dark:bg-black/20 p-3 w-full rounded-xl shadow-sm">
+                <div role="radiogroup" aria-label="View mode"
+                     class="inline-flex rounded-lg border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 overflow-hidden">
+                  <!-- Table View -->
+                  <div>
+                    <input type="radio" id="view-table" name="view-toggle" value="table"
+                           class="sr-only peer" aria-controls="table-view-panel" checked>
+                    <label for="view-table"
+                           class="block px-3 py-1.5 text-sm cursor-pointer select-none transition
+                                  text-black/70 dark:text-white/70
+                                  peer-checked:bg-white dark:peer-checked:bg-black
+                                  peer-checked:text-black dark:peer-checked:text-white">
+                      Table View
+                    </label>
+                  </div>
+                  <!-- Line Chart View -->
+                  <div>
+                    <input type="radio" id="view-chart" name="view-toggle" value="chart"
+                           class="sr-only peer" aria-controls="chart-view-panel">
+                    <label for="view-chart"
+                           class="block px-3 py-1.5 text-sm cursor-pointer select-none transition
+                                  text-black/70 dark:text-white/70
+                                  peer-checked:bg-white dark:peer-checked:bg-black
+                                  peer-checked:text-black dark:peer-checked:text-white">
+                      Line Chart View
+                    </label>
+                  </div>
                 </div>
+              </div>
+
+              <!-- Table view panel -->
+              <div id="table-view-panel" role="region" aria-label="Table view">
+                <div class="overflow-auto max-h-[60vh] bg-white dark:bg-black/20 p-3 w-full rounded-xl shadow-sm">
+                  <table class="w-full text-left">
+                    <!-- <caption class="sr-only">Daily sentiment scores for recent dates</caption> -->
+                    <thead class="top-0 sticky bg-white dark:bg-black">
+                      <tr class="border-b border-black/10 dark:border-white/10">
+                        <th scope="col" class="p-4 text-sm font-semibold text-black/60 dark:text-white/60">
+                          Date
+                        </th>
+                        <th scope="col"
+                            class="p-4 text-sm font-semibold text-black/60 dark:text-white/60 text-center">
+                          Sentiment score
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody id="sentiment-rows" class="divide-y divide-black/10 dark:divide-white/10"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Chart view panel (empty div for D3) -->
+              <div id="chart-view-panel" role="region" aria-label="Line chart view" class="bg-white dark:bg-black/20 p-3 w-full rounded-xl shadow-sm hidden" aria-hidden="true">
+                <div id="sentiment-chart" class="w-full h-72"></div>
+              </div>
             </div>
+          </div>
         </section>
+
 
     </main>
 </body>

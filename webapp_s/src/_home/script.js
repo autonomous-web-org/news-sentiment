@@ -196,3 +196,20 @@ function downloadBlob(content, filename, type) {
   a.remove();
   URL.revokeObjectURL(url);
 }
+
+
+ const radios = document.querySelectorAll('input[name="view-toggle"]');
+              const tablePanel = document.getElementById('table-view-panel');
+              const chartPanel = document.getElementById('chart-view-panel');
+
+              function setView(view) {
+                const isTable = view === 'table';
+                tablePanel.classList.toggle('hidden', !isTable);
+                chartPanel.classList.toggle('hidden', isTable);
+                tablePanel.setAttribute('aria-hidden', String(!isTable));
+                chartPanel.setAttribute('aria-hidden', String(isTable));
+              }
+
+              radios.forEach(r => r.addEventListener('change', (e) => setView(e.target.value)));
+              const checked = document.querySelector('input[name="view-toggle"]:checked');
+              setView(checked ? checked.value : 'table');
