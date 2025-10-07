@@ -1,4 +1,17 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+@import "tailwindcss";  /* single-line Tailwind import :contentReference[oaicite:3]{index=3} */
+
+
+
+/* Enable class-based dark mode variant */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-primary: #1173d4;
+  --color-background-light: #f6f7f8;
+  --color-background-dark: #101922;
+}
+
 /*
 
 :root {

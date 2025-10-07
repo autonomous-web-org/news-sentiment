@@ -1,18 +1,7 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import NSSContainer from './pages/home';
 
 function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <div className="bg-slate-600 text-white">
-      hellow world!
-      </div>
-    </>
-  )
+  return <NSSContainer />;
 }
 
 export default App
