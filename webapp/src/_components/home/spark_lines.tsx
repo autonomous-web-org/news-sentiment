@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import * as d3 from 'd3';
 import { type SentimentRow } from '../../_state_hooks/useNSSStore';
@@ -22,14 +23,14 @@ function Sparkline({ data, label, isDark }: { data: SentimentRow[]; label: strin
     const parse = d3.timeParse('%Y-%m-%d');
     const pd = data.map(d=>({ date: parse(d.date)!, score: d.score }));
 
-    const width=200, height=40, margin={left:0,top:0,right:0,bottom:0};
+    const width=200, height=40;//margin={left:0,top:0,right:0,bottom:0};
     const x = d3.scaleTime()
-      .domain(d3.extent(pd,d=>d.date) as [Date,Date])
+      .domain(d3.extent(pd,(d: { date: any; })=>d.date) as [Date,Date])
       .range([0,width]);
     const y = d3.scaleLinear()
       .domain([0,2]).range([height,0]);
 
-    const line = d3.line<any>().x(d=>x(d.date)).y(d=>y(d.score));
+    const line = d3.line<any>().x((d: { date: any; })=>x(d.date)).y((d: { score: any; })=>y(d.score));
 
     const svg = d3.select(ref.current);
     svg.selectAll('*').remove();

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { type SentimentRow } from '../../_state_hooks/useNSSStore';
@@ -18,7 +19,7 @@ export function SentimentDonut({ data, isDark }: Props) {
       { label:'Negative',value:counts.negative,color:'#f43f5e' }
     ];
 
-    const pie = d3.pie<any>().value(d=>d.value).sort(null);
+    const pie = d3.pie<any>().value((d: { value: any; })=>d.value).sort(null);
     const arc = d3.arc<any>().innerRadius(70).outerRadius(100);
 
     const svg = d3.select(ref.current);
@@ -30,7 +31,7 @@ export function SentimentDonut({ data, isDark }: Props) {
       .data(pie(dataset))
       .enter().append('path')
       .attr('d',arc as any)
-      .attr('fill',d=>d.data.color)
+      .attr('fill',(d: { data: { color: any; }; })=>d.data.color)
       .attr('stroke',isDark?'#1e293b':'#ffffff')
       .attr('stroke-width',2);
 
