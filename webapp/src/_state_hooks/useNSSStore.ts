@@ -16,7 +16,7 @@ interface NSSState {
 }
 
 export const useNSSStore = create<NSSState>((set) => ({
-  exchange: 'NASDAQ',
+  exchange: import.meta.env.VITE_DEFAULT_EXCHANGE,
   ticker: '',
   data: [],
   loading: false,

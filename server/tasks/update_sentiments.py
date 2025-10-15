@@ -52,7 +52,7 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 ENABLE_GOOGLE_SEARCH = os.environ.get("ENABLE_GOOGLE_SEARCH", "false").lower() in {"1", "true", "yes"}
 
 # Safety limits
-MAX_DAYS_PER_TICKER = int(os.environ.get("MAX_DAYS_PER_TICKER", "30"))  # cap per run
+MAX_DAYS_PER_TICKER = int(os.environ.get("MAX_DAYS_PER_TICKER", "3"))  # cap per run
 
 # ----------------------------
 # Time helpers

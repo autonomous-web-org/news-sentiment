@@ -5,8 +5,8 @@ import { type SentimentRow } from '../../_state_hooks/useNSSStore';
 
 interface Props { data: SentimentRow[]; isDark: boolean; }
 type Counts = { neutral: number; positive: number; negative: number };
-type MonthRow = { month: string; score: 0 | 1 | 2 };
-type StackDatum = { month: Date } & Counts;
+type YearRow = { year: string; score: 0 | 1 | 2 };
+type StackDatum = { year: Date } & Counts;
 
 export function SentimentStackedBar({ data, isDark }: Props) {
   const ref = useRef<SVGSVGElement>(null);
@@ -15,36 +15,36 @@ export function SentimentStackedBar({ data, isDark }: Props) {
     if (!ref.current) return;
 
     const parseDay = d3.timeParse('%Y-%m-%d')!;
-    const fmtMonth = d3.timeFormat('%Y-%m');
-    const parseMonth = d3.timeParse('%Y-%m')!;
+    const fmtYear = d3.timeFormat('%Y');
+    const parseYear = d3.timeParse('%Y')!;
 
-    // Normalize into month rows, guard invalid dates
-    const monthRows: MonthRow[] = data
+    // Normalize into year rows, guard invalid dates
+    const yearRows: YearRow[] = data
       .map(d => {
         const dt = parseDay(d.date);
         if (!dt) return null;
-        return { month: fmtMonth(dt), score: d.score as 0 | 1 | 2 };
+        return { year: fmtYear(dt), score: d.score as 0 | 1 | 2 };
       })
-      .filter((d): d is MonthRow => !!d);
+      .filter((d): d is YearRow => !!d);
 
-    // Aggregate counts by month (typed reducer receives MonthRow[])
-    const rollup = d3.rollup<MonthRow, Counts, [string]>(
-      monthRows,
+    // Aggregate counts by year
+    const rollup = d3.rollup<YearRow, Counts, [string]>(
+      yearRows,
       (values) => ({
         neutral: values.filter(v => v.score === 0).length,
         positive: values.filter(v => v.score === 1).length,
         negative: values.filter(v => v.score === 2).length,
       }),
-      v => v.month
+      v => v.year
     );
 
-    // Build dataset of { month: Date, neutral, positive, negative }
-    const dataset: StackDatum[] = Array.from(rollup, ([month, counts]) => ({
-      month: parseMonth(month)!,
+    // Build dataset of { year: Date, neutral, positive, negative }
+    const dataset: StackDatum[] = Array.from(rollup, ([year, counts]) => ({
+      year: parseYear(year)!,
       ...counts,
     }))
-      .filter(d => d.month instanceof Date && !isNaN(d.month.getTime()))
-      .sort((a, b) => a.month.getTime() - b.month.getTime());
+      .filter(d => d.year instanceof Date && !isNaN(d.year.getTime()))
+      .sort((a, b) => a.year.getTime() - b.year.getTime());
 
     const margin = { top: 20, right: 30, bottom: 50, left: 50 };
     const width = 600 - margin.left - margin.right;
@@ -66,7 +66,7 @@ export function SentimentStackedBar({ data, isDark }: Props) {
       .range(isDark ? ['#64748b', '#10b981', '#f43f5e'] : ['#64748b', '#10b981', '#f43f5e']);
 
     const x = d3.scaleBand<Date>()
-      .domain(dataset.map(d => d.month))
+      .domain(dataset.map(d => d.year))
       .range([0, width])
       .padding(0.1);
 
@@ -85,7 +85,7 @@ export function SentimentStackedBar({ data, isDark }: Props) {
 
     // Axes
     const xAxis = d3.axisBottom<Date>(x)
-      .tickFormat(d3.timeFormat('%b %y') as unknown as (d: Date) => string);
+      .tickFormat(d3.timeFormat('%Y') as unknown as (d: Date) => string);
 
     const yAxis = d3.axisLeft(y).ticks(5);
 
@@ -100,20 +100,43 @@ export function SentimentStackedBar({ data, isDark }: Props) {
       .selectAll('text')
       .style('fill', isDark ? '#e2e8f0' : '#334155');
 
-    // Bars
-    g.selectAll('g.layer')
+    // Bars (no per-rect <title> here)
+    const layers = g.selectAll('g.layer')
       .data(series)
       .join('g')
       .attr('class', 'layer')
-      .attr('fill', d => color(d.key as string)!)
-      .selectAll('rect')
+      .attr('fill', d => color(d.key as string)!);
+
+    layers.selectAll('rect')
       .data(d => d)
       .join('rect')
-      .attr('x', d => x(d.data.month)!)
+      .attr('x', d => x(d.data.year)!)
       .attr('y', d => y(d[1]))
       .attr('height', d => Math.max(0, y(d[0]) - y(d[1])))
       .attr('width', x.bandwidth());
 
+    // One overlay per year with a single combined <title>
+    const hover = g.append('g').attr('class', 'hover-overlays');
+
+    hover.selectAll('rect.overlay')
+      .data(dataset)
+      .join('rect')
+      .attr('class', 'overlay')
+      .attr('x', d => x(d.year)!)
+      .attr('y', 0)
+      .attr('width', x.bandwidth())
+      .attr('height', height)
+      .attr('fill', 'transparent')        // keep painted for pointer-events
+      .style('pointer-events', 'all')     // ensure hover works across the full column
+      .append('title')
+      .text(d => {
+        const total = d.neutral + d.positive + d.negative;
+        return `${fmtYear(d.year)}
+Neutral: ${d.neutral}
+Positive: ${d.positive}
+Negative: ${d.negative}
+Total: ${total}`;
+      });
   }, [data, isDark]);
 
   return <svg ref={ref} className="w-full h-auto" />;

@@ -8,7 +8,7 @@ import { SentimentSparklines } from './spark_lines';
 import { SentimentStream } from './stream';
 import { useNSSStore, type SentimentRow } from '../../_state_hooks/useNSSStore';
 
-const exchanges = ['NASDAQ', 'NYSE', 'BSE', 'NSE'] as const;
+const exchanges = ['NSE', 'BSE', 'NASDAQ', 'NYSE'] as const;
 
 export function NSSHeader() {
   const {
@@ -40,7 +40,7 @@ export function NSSHeader() {
 
     try {
       const res = await fetch(
-        `https://api.autonomousweb.org/sentiment?exchange=${exchange.toLowerCase()}&ticker=${ticker.toUpperCase()}`,
+        `${import.meta.env.VITE_SERVER_ENDPOINT}/sentiment?exchange=${exchange.toLowerCase()}&ticker=${ticker.toLowerCase()}`,
         { headers: { Accept: 'text/plain' }, cache: 'no-cache' }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -118,7 +118,7 @@ export function NSSHeader() {
           <input
             value={ticker}
             onChange={(e) => setTicker(e.target.value)}
-            placeholder="Enter stock ticker (e.g., AAPL)"
+            placeholder={`Enter stock ticker (e.g., ${import.meta.env.VITE_DEFAULT_TICKER})`}
             className="w-full p-3 rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-black/20 outline-0 text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40"
             autoComplete="off"
           />
@@ -159,12 +159,12 @@ export function NSSHeader() {
   );
 }
 
-type ChartType = 'stacked' | 'calendar' | 'sparklines' | 'stream' | 'donut';
+type ChartType = 'stacked-y' | 'calendar' | 'sparklines' | 'stream' | 'donut';
 
 export function NSSMain() {
   const { data, status, ticker } = useNSSStore();
   const [view, setView] = useState<'table' | 'chart'>('table');
-  const [chartType, setChartType] = useState<ChartType>('stacked');
+  const [chartType, setChartType] = useState<ChartType>('stacked-y');
   const [isDark, setIsDark] = useState(false);
 
   // Monitor theme changes
@@ -249,11 +249,11 @@ export function NSSMain() {
                     onChange={(e) => setChartType(e.target.value as ChartType)}
                     className="p-2 rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-black/20 text-sm text-black dark:text-white"
                   >
-                    <option value="stacked">Stacked bar (monthly)</option>
+                    <option value="stacked-y">Stacked bar (yearly)</option>
                     <option value="calendar">Calendar heatmap</option>
                     <option value="sparklines">Sparklines</option>
                     <option value="stream">Streamgraph</option>
-                    <option value="donut">Donut with KPI</option>
+                    <option value="donut">KPI Ring Card (KPI Donut with a twist)</option>
                   </select>
                 </div>
               )}
@@ -284,14 +284,18 @@ export function NSSMain() {
                 {!data.length && <div className="text-gray-400 text-center py-7">No data to display</div>}
               </div>
             ) : (
-              <div className="bg-white dark:bg-black/20 p-3 w-full rounded-xl shadow-sm">
+              <div className={
+                twMerge("bg-white dark:bg-black/20 p-3 w-full rounded-xl shadow-sm mx-auto",
+                  chartType === 'donut' && "max-w-[60%]"
+                )
+                }>
                 {!data.length ? (
                   <div className="h-80 flex items-center justify-center">
                     <span className="text-gray-400">No data to display</span>
                   </div>
                 ) : (
                   <>
-                    {chartType === 'stacked' && <SentimentStackedBar data={data} isDark={isDark} />}
+                    {chartType === 'stacked-y' && <SentimentStackedBar data={data} isDark={isDark} />}
                     {chartType === 'calendar' && <SentimentCalendar data={data} isDark={isDark} />}
                     {chartType === 'sparklines' && (
                       <SentimentSparklines
