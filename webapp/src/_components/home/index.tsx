@@ -4,8 +4,8 @@ import { twMerge } from 'tailwind-merge';
 import { SentimentStackedBar } from './stacked_bar';
 import { SentimentCalendar } from './calendar';
 import { SentimentDonut } from './donut';
-import { SentimentSparklines } from './spark_lines';
-import { SentimentStream } from './stream';
+// import { SentimentSparklines } from './spark_lines';
+// import { SentimentStream } from './stream';
 import { useNSSStore, type SentimentRow } from '../../_state_hooks/useNSSStore';
 
 const exchanges = ['NSE', 'BSE', 'NASDAQ', 'NYSE'] as const;
@@ -159,10 +159,10 @@ export function NSSHeader() {
   );
 }
 
-type ChartType = 'stacked-y' | 'calendar' | 'sparklines' | 'stream' | 'donut';
+type ChartType = 'stacked-y' | 'calendar' | 'donut'; //| 'sparklines' | 'stream'
 
 export function NSSMain() {
-  const { data, status, ticker } = useNSSStore();
+  const { data, status } = useNSSStore();
   const [view, setView] = useState<'table' | 'chart'>('table');
   const [chartType, setChartType] = useState<ChartType>('stacked-y');
   const [isDark, setIsDark] = useState(false);
@@ -251,8 +251,8 @@ export function NSSMain() {
                   >
                     <option value="stacked-y">Stacked bar (yearly)</option>
                     <option value="calendar">Calendar heatmap</option>
-                    <option value="sparklines">Sparklines</option>
-                    <option value="stream">Streamgraph</option>
+                    {/* <option value="sparklines">Sparklines</option> */}
+                    {/* <option value="stream">Streamgraph</option> */}
                     <option value="donut">KPI Ring Card (KPI Donut with a twist)</option>
                   </select>
                 </div>
@@ -297,13 +297,13 @@ export function NSSMain() {
                   <>
                     {chartType === 'stacked-y' && <SentimentStackedBar data={data} isDark={isDark} />}
                     {chartType === 'calendar' && <SentimentCalendar data={data} isDark={isDark} />}
-                    {chartType === 'sparklines' && (
+                    {/* {chartType === 'sparklines' && (
                       <SentimentSparklines
                         datasets={{ [(ticker || 'Current').toUpperCase()]: data }}
                         isDark={isDark}
                       />
-                    )}
-                    {chartType === 'stream' && <SentimentStream data={data} isDark={isDark} />}
+                    )} */}
+                    {/* {chartType === 'stream' && <SentimentStream data={data} isDark={isDark} />} */}
                     {chartType === 'donut' && <SentimentDonut data={data} isDark={isDark} />}
                   </>
                 )}
