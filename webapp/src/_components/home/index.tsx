@@ -9,6 +9,7 @@ import { SentimentDonut } from './donut';
 import { useNSSStore, type SentimentRow } from '../../_state_hooks/useNSSStore';
 
 const EXCHANGES: string[] = import.meta.env.VITE_EXCHANGES.split(",").map((z: string) => z.toUpperCase());
+console.log(EXCHANGES)
 
 export function NSSHeader() {
   const {
