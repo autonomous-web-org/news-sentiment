@@ -37,7 +37,7 @@ except ImportError:
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-EXCHANGES = [e.strip().lower() for e in os.environ.get("EXCHANGES", "nasdaq,bse,nse,nyse").split(",") if e.strip()]
+EXCHANGES = [e.strip().lower() for e in os.environ.get("EXCHANGES", "nasdaq,nse,nyse").split(",") if e.strip()]
 # MySQL (inside PythonAnywhere scheduled tasks, connect directly without SSH)
 DB_HOST = os.environ.get("PA_DB_HOST")  # e.g., youruser.mysql.pythonanywhere-services.com
 DB_USER = os.environ.get("PA_DB_USER")
@@ -94,8 +94,10 @@ def init_gemini():
 
 def research_with_grounding(model, exchange: str, ticker: str, date_str: str) -> str:
     prompt = f"""
-Summarize public news coverage for {ticker} of {exchange} on {date_str} (UTC) in 3-5 short bullet points
-focused only on that day. Include only facts and high-level analyst actions.
+Summarize all financial news, press releases, and analyst coverage for the {ticker.upper()} ticker belonging to {exchange.upper()} exchange on {date_str}.
+Focus the summary *only* on events likely to drive significant stock movement, such as earnings reports, unexpected corporate actions, or major analyst rating changes.
+Filter out routine product announcements or standard positive corporate news that is typical for a stable company.
+Provide the summary in 3-5 succinct, fact-based bullet points.
 """
     resp = model.generate_content(prompt.strip())
     return (getattr(resp, "text", "") or "").strip()
@@ -106,9 +108,14 @@ def classify_without_tools(client: "genai.Client", model_id: str, context: str, 
         temperature=0.0,
     )
     prompt = f"""
-Based only on the context below, classify the overall sentiment for {ticker} on {date_str} as:
-0 = neutral, 1 = positive, 2 = negative.
-Respond with a single JSON integer, no text.
+Based only on the provided context for {ticker.upper()} on {date_str}, classify the *market-moving impact* as a discrete sentiment score.
+
+Use the following rigorous classification thresholds:
+1: Positive (Good News). Reserve this score for news that represents a statistically significant, unexpected positive market event (e.g., a major earnings beat, unexpected M&A). Routine positive news or expected performance should NOT be classified as 1.
+2: Negative (Bad News). Reserve this score for news that represents a statistically significant, unexpected negative market event (e.g., a large earnings miss, unexpected litigation, material guidance cut).
+0: Neutral News. Use this score for all other events, including routine corporate communications, news that is already anticipated by the market, or news that falls within normal market noise.
+
+Respond with a single JSON integer (0, 1, or 2), strictly no text outside the JSON.
 
 Context:
 {context}

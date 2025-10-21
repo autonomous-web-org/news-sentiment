@@ -35,7 +35,7 @@ def resolve_ticker_id(conn, exchange_code: str, symbol: str):
       SELECT t.id
       FROM tickers t
       JOIN exchanges e ON e.id = t.exchange_id
-      WHERE LOWER(e.code) = %s AND UPPER(t.symbol) = %s
+      WHERE LOWER(e.code) = %s AND UPPER(t.symbol) = %s AND active = 1
     """
     with conn.cursor() as cur:
         cur.execute(sql, (exchange_code.lower(), symbol.upper()))
