@@ -26,6 +26,11 @@ jobs:
           node-version: 20
       - run: npm ci
       - run: npm run build
+        env:
+          VITE_DEFAULT_EXCHANGE: ${{ vars.VITE_DEFAULT_EXCHANGE }}
+          VITE_DEFAULT_TICKER: ${{ vars.VITE_DEFAULT_TICKER }}
+          VITE_EXCHANGES: ${{ vars.VITE_EXCHANGES }}
+          VITE_SERVER_ENDPOINT: ${{ vars.VITE_SERVER_ENDPOINT }}
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
