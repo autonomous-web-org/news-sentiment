@@ -286,7 +286,7 @@ export function NSSMain() {
                     ))}
                   </tbody>
                 </table>
-                {!data.length && <div className="text-gray-400 text-center py-7">No data to display</div>}
+                {!data.length && <div className="text-gray-400 text-center py-7">{status.length ? status : "No data to display"}</div>}
               </div>
             ) : (
               <div className={
