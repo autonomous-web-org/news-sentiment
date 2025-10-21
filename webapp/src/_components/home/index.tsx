@@ -9,7 +9,6 @@ import { SentimentDonut } from './donut';
 import { useNSSStore, type SentimentRow } from '../../_state_hooks/useNSSStore';
 
 const EXCHANGES: string[] = import.meta.env.VITE_EXCHANGES.split(",").map((z: string) => z.toUpperCase());
-console.log(EXCHANGES);
 
 export function NSSHeader() {
   const {
@@ -190,20 +189,25 @@ export function NSSMain() {
             <h3 className="text-sm font-semibold text-black/70 dark:text-white/70 mb-3">
               Sentiment legend
             </h3>
-            <ul className="space-y-2">
+            <ul className="space-y-2 mb-3">
               <li className="flex items-center gap-2">
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                <span className="text-sm">1 — Positive</span>
+                <span className="text-sm">1 - Positive</span>
               </li>
               <li className="flex items-center gap-2">
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500" />
-                <span className="text-sm">2 — Negative</span>
+                <span className="text-sm">2 - Negative</span>
               </li>
               <li className="flex items-center gap-2">
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-slate-400 dark:bg-slate-500" />
-                <span className="text-sm">0 — Neutral</span>
+                <span className="text-sm">0 - Neutral</span>
               </li>
             </ul>
+
+            <ol className=''>
+              <li><strong>- Do NOT treat neutral days as completely neutral - they could be unknown too.</strong></li>
+              <li><strong>- This is not a financial advice.</strong></li>
+            </ol>
           </aside>
 
           <div className="flex-1">

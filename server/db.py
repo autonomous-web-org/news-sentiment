@@ -272,7 +272,7 @@ def update_cursor_from_json(conn, json_path: str, exchange_code: str):
 
 def migrate_data_dir(conn, data_root: str, use_load_data: bool = False) -> None:
     """
-    Scans data_root/{exchange}/ for *.csv and tickers_last_updated.json and loads them.
+    Scans {data_root}/{exchange}/ for *.csv and tickers_last_updated.json and loads them.
     - Ensures exchange and tickers exist.
     - Loads CSVs into sentiment_daily.
     - Updates ticker_sentiment_cursor from JSON.
