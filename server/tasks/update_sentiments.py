@@ -92,9 +92,9 @@ def init_gemini():
         config = types.GenerateContentConfig(tools=[search_tool])
     return _ModelShim(client, model_id, config)
 
-def research_with_grounding(model, ticker: str, date_str: str) -> str:
+def research_with_grounding(model, exchange: str, ticker: str, date_str: str) -> str:
     prompt = f"""
-Summarize public news coverage for {ticker} on {date_str} (UTC) in 3-5 short bullet points
+Summarize public news coverage for {ticker} of {exchange} on {date_str} (UTC) in 3-5 short bullet points
 focused only on that day. Include only facts and high-level analyst actions.
 """
     resp = model.generate_content(prompt.strip())
@@ -123,8 +123,8 @@ Context:
         raise RuntimeError(f"Classification out of range: {val!r}")
     return val
 
-def generate_sentiment(model_shim, ticker: str, date_str: str) -> int:
-    summary = research_with_grounding(model_shim, ticker, date_str)
+def generate_sentiment(model_shim, exchange: str, ticker: str, date_str: str) -> int:
+    summary = research_with_grounding(model_shim, exchange, ticker, date_str)
     client = model_shim._client
     model_id = model_shim._model_id
     return classify_without_tools(client, model_id, summary, ticker, date_str)
@@ -292,7 +292,7 @@ def main() -> int:
                 for d in days:
                     date_str = d.isoformat()
                     try:
-                        s = generate_sentiment(model, sym.upper(), date_str)
+                        s = generate_sentiment(model, ex_code, sym.upper(), date_str)
                     except Exception as e:
                         logging.error("Classification failed for %s %s: %s", sym.upper(), date_str, e)
                         rc = rc or 5

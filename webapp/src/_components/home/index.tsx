@@ -8,7 +8,7 @@ import { SentimentDonut } from './donut';
 // import { SentimentStream } from './stream';
 import { useNSSStore, type SentimentRow } from '../../_state_hooks/useNSSStore';
 
-const exchanges = ['NSE', 'BSE', 'NASDAQ', 'NYSE'] as const;
+const EXCHANGES: string[] = import.meta.env.VITE_EXCHANGES.split(",").map((z: string) => z.toUpperCase());
 
 export function NSSHeader() {
   const {
@@ -108,7 +108,7 @@ export function NSSHeader() {
             <option value="" disabled>
               Select exchange
             </option>
-            {exchanges.map((ex) => (
+            {EXCHANGES.map((ex) => (
               <option key={ex} value={ex}>
                 {ex}
               </option>
