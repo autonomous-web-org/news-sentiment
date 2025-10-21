@@ -11,11 +11,13 @@ import csv
 import datetime as dt
 from typing import Optional, Tuple, List, Dict, Set
 from datetime import datetime, timezone
-
+from dotenv import load_dotenv
 from contextlib import contextmanager
-
 from sshtunnel import SSHTunnelForwarder
 import pymysql
+
+
+load_dotenv()
 
 # -----------------------------
 # Configuration (edit these)
@@ -308,9 +310,9 @@ def main():
         with mysql_conn_over_ssh() as conn:
             # Ensure schema exists (already in your script)
             cur = conn.cursor()
-            for ddl in DDL_STATEMENTS:
-                cur.execute(ddl)
-            rebuild_partitions_if_needed(cur)
+            # for ddl in DDL_STATEMENTS:
+            #     cur.execute(ddl)
+            # rebuild_partitions_if_needed(cur)
 
             # Migrate files under ./data/{exchange}/
             data_root = "./data"
