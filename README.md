@@ -12,3 +12,5 @@ This repository aggregates historical news and computes per‑ticker sentiment s
 - TSX - BN
 - TYO - 8001
 - XPAR - LVMH
+
+_UPDATED DAILY_
