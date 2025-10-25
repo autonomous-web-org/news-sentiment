@@ -23,13 +23,14 @@ load_dotenv()
 # Configuration (edit these)
 # -----------------------------
 SSH_HOST = "ssh.pythonanywhere.com"      # or "ssh.eu.pythonanywhere.com"
-SSH_USERNAME = "username"
-SSH_PASSWORD = ""    # PythonAnywhere SSH/password auth
+SSH_USERNAME = os.environ.get("PA_DB_USER")
+SSH_PASSWORD = os.environ.get("PA_SSH_PASSWORD")    # PythonAnywhere SSH/password auth
 
-PA_DB_HOST = SSH_USERNAME + ".mysql.pythonanywhere-services.com"  # or *.eu.* for EU
-PA_DB_USER = SSH_USERNAME
-PA_DB_PASSWORD = "adf"
-PA_DB_NAME = SSH_USERNAME+"$default"
+DB_HOST = os.environ.get("PA_DB_HOST")
+DB_USER = os.environ.get("PA_DB_USER")
+DB_PASSWORD = os.environ.get("PA_DB_PASSWORD")
+DB_NAME = os.environ.get("PA_DB_NAME")
+
 
 # Partition years to create (inclusive range + MAXVALUE)
 FIRST_YEAR = 2023
@@ -137,16 +138,16 @@ def mysql_conn_over_ssh():
         (SSH_HOST, 22),
         ssh_username=SSH_USERNAME,
         ssh_password=SSH_PASSWORD,
-        remote_bind_address=(PA_DB_HOST, 3306),
+        remote_bind_address=(DB_HOST, 3306),
         set_keepalive=10.0
     ) as tunnel:
         local_port = tunnel.local_bind_port
         conn = pymysql.connect(
             host="127.0.0.1",
             port=local_port,
-            user=PA_DB_USER,
-            password=PA_DB_PASSWORD,
-            database=PA_DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME,
             charset="utf8mb4",
             autocommit=True,
             local_infile=True  # Enable for LOAD DATA LOCAL INFILE
