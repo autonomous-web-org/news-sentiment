@@ -1,12 +1,7 @@
 import os
-from flask import Flask, request, Response, abort
+from flask import Flask, request, Response
 import pymysql
 
-# Environment variables:
-#   PA_DB_HOST=youruser.mysql.pythonanywhere-services.com
-#   PA_DB_USER=youruser
-#   PA_DB_PASSWORD=your_db_password
-#   PA_DB_NAME=youruser$yourdbname
 
 DB_HOST = os.environ.get("PA_DB_HOST")
 DB_USER = os.environ.get("PA_DB_USER")

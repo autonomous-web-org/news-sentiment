@@ -14,6 +14,7 @@ Prereqs: pip install python-dotenv PyMySQL google-genai requests urllib3
 """
 
 from dotenv import load_dotenv
+import time
 import os
 import sys
 import json
@@ -300,6 +301,7 @@ def main() -> int:
                     date_str = d.isoformat()
                     try:
                         s = generate_sentiment(model, ex_code, sym.upper(), date_str)
+                        time.sleep(12)  # For free-tier limit of 5 RPM
                     except Exception as e:
                         logging.error("Classification failed for %s %s: %s", sym.upper(), date_str, e)
                         rc = rc or 5
