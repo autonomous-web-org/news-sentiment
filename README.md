@@ -5,7 +5,7 @@ This repository aggregates historical news and computes per‑ticker sentiment s
 ## Secruity Measures
 - Scan using Gitleaks periodically.
 ```bash
-gitleaks -v
+gitleaks detect -v
 ```
 
 ## Available (Exhcnages - Tickers)
