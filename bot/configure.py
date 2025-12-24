@@ -1,5 +1,6 @@
 import json
 import traceback
+import pprint
 
 from classes import Panel
 from test import is_json_valid
@@ -17,7 +18,8 @@ screens = {
     },
     "Tests": {
         "title": "Tests",
-        "subtitle": "Run tests to see if the system is working fine or not"
+        "subtitle": "Run tests to see if the APIs, Configs, etc. are working fine or not"
+        # The UI working is not being tested here. Basically its like backend testing
     }
 }
 
@@ -37,7 +39,11 @@ def save_config():
     pass
 
 
+
 try:
+    # is_json_valid(load_default_config())
+    screens["Tests"] = 
+
     panel = Panel()
     panel.setup(screens)
 except Exception as e:

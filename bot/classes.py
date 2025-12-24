@@ -1,6 +1,8 @@
 from tkinter import *
 from tkinter import ttk
+from tkinter.scrolledtext import ScrolledText
 import pprint
+
 
 class Screen(object):
     """docstring for Screen"""
@@ -41,7 +43,61 @@ class Screen(object):
         self._screen_body()
 
         if self.header is None or self.body is None:
-            raise BaseException("Header and Body frame incomplete")
+            raise Exception("Header and Body frame incomplete")
+
+
+
+class TestsScreen(Screen):
+    """docstring for TestScreen"""
+    def __init__(self, parent, run_tests_callback = None):
+        super().__init__(parent)
+        self.test_log = None
+        self.run_tests_callback = run_tests_callback
+
+
+    def _build_body(self):
+        # Make body expandable
+        self.body.grid_columnconfigure(0, weight=1)
+        self.body.grid_rowconfigure(0, weight=1)
+
+        # Log area (expands)
+        self.test_log = ScrolledText(self.body, wrap="word", height=10)
+        self.test_log.grid(row=0, column=0, sticky="nsew", pady=(10, 10))
+        self.test_log.configure(state="disabled")
+
+        # Button row
+        btn_row = ttk.Frame(self.body)
+        btn_row.grid(row=1, column=0, sticky="ew")
+        btn_row.grid_columnconfigure(0, weight=1)
+
+        ttk.Button(btn_row, text="Run tests", command=self.run_tests)\
+            .grid(row=0, column=0, sticky="w")
+
+
+    def _append_log(self, msg: str):
+        self.test_log.configure(state="normal")
+        self.test_log.insert("end", msg + "\n")
+        self.test_log.yview("end")
+        self.test_log.configure(state="disabled")
+
+
+    def run_tests(self):
+        if self.run_tests_callback is None:
+            return
+
+        self._append_log("Starting tests...")
+        
+        tests_results = self.run_tests_callback()
+
+        for results in tests_results:
+            self._append_log(results)
+
+        self._append_log("All tests completed.")
+
+
+    def setup(self, title, subtitle):
+        super().setup(title, subtitle)
+        self._build_body()
 
 
 
@@ -53,7 +109,7 @@ class Panel(object):
         self.screens = {}
         self.nav = None
         self.content = None
-        
+
 
     # Function to raise a screen
     def show_screen(self, name):
@@ -79,7 +135,10 @@ class Panel(object):
 
     def _setup_screens(self):
         for screen_key in self.screens:
-            self.screens[screen_key]["screen"] = Screen(self.content)
+            if screen_key == "Tests":
+                self.screens[screen_key]["screen"] = TestsScreen(self.content, self.screens[screen_key]["run_tests_callback"])
+            else:
+                self.screens[screen_key]["screen"] = Screen(self.content)
             self.screens[screen_key]["screen"].setup(self.screens[screen_key]["title"], self.screens[screen_key]["subtitle"])
 
 
@@ -100,7 +159,7 @@ class Panel(object):
         self._setup_content_frame()
 
         if self.nav is None or self.content is None:
-            raise BaseException( "Navigation and Content frame incomplete" )
+            raise Exception( "Navigation and Content frame incomplete" )
 
 
         self._setup_screens()
@@ -108,7 +167,7 @@ class Panel(object):
 
         all_screens = self.screens.keys()
         if len(all_screens) == 0:
-            raise BaseException( "Screens setup incomplete" )
+            raise Exception( "Screens setup incomplete" )
 
 
         # Show default screen
