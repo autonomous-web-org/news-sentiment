@@ -1,3 +1,4 @@
+import tkinter as tk
 from tkinter import *
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
@@ -84,6 +85,10 @@ class TestsScreen(Screen):
     def run_tests(self):
         if self.run_tests_callback is None:
             return
+
+        self.test_log.configure(state="normal")
+        self.test_log.delete("1.0", tk.END)   # clear all text
+        self.test_log.configure(state="disabled")
 
         self._append_log("Starting tests...")
         

@@ -7,6 +7,8 @@ from test import is_json_valid
 
 
 
+# configs ====================================================================================
+
 screens = {
     "Exchanges": {
         "title": "Exchanges/Stocks",
@@ -24,8 +26,6 @@ screens = {
 }
 
 
-
-
 def load_default_config():
     with open("default.json", "r") as default_config_file:
         config = default_config_file.read()
@@ -40,9 +40,20 @@ def save_config():
 
 
 
+
+# tests functionality ====================================================================================
+def tests():
+    tests_results = []
+
+    tests_results.append("load_default_config -> " + is_json_valid(load_default_config()))
+
+    return tests_results
+
+
+
+# main loop starts ====================================================================================
 try:
-    # is_json_valid(load_default_config())
-    screens["Tests"] = 
+    screens["Tests"]["run_tests_callback"] = tests
 
     panel = Panel()
     panel.setup(screens)

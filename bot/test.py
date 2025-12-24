@@ -10,11 +10,9 @@ def is_json_valid(json_string):
     """
     try:
         json.loads(json_string)
-        return "default config json valid ✔"
-    except json.decoder.JSONDecodeError:
-        return False
-    except TypeError:
-        return False
+        return "json valid ✔"
+    except:
+        return "json invalid"
     return True
 
 
