@@ -20,3 +20,6 @@ gitleaks detect -v
 - XPAR - LVMH
 
 _UPDATED DAILY_
+
+
+https://newsapi.org/v2/everything

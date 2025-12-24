@@ -1,0 +1,115 @@
+{
+  "news_apis": {
+    "news_api_v2": {
+      "api_key": "asdf",
+      "enabled": true,
+      "base_endpoint": "https://newsapi.org/v2"
+    }
+  },
+  "exchanges": {
+    "NSE": {
+      "name": "National Stock Exchange (India)",
+      "timezone": "Asia/Kolkata",
+      "enabled": true,
+      "stocks": {
+        "RELIANCE": {
+          "symbol": "RELIANCE.NS",
+          "full_name": "Reliance Industries Limited",
+          "enabled": true,
+          "social_sources": {
+            "twitter": {
+              "enabled": true,
+              "queries": ["RELIANCE stock", "RIL news"],
+              "limit": 20
+            },
+            "reddit": {
+              "enabled": true,
+              "subreddits": ["IndianStocks", "stocks"],
+              "limit": 15
+            }
+          },
+          "news_sources": [
+            {
+              "name": "economictimes",
+              "url": "https://feeds.economictimes.indiatimes.com/markets.cms",
+              "type": "rss",
+              "enabled": true
+            },
+            {
+              "name": "reuters",
+              "url": "https://feeds.reuters.com/finance/markets",
+              "type": "rss",
+              "enabled": true
+            },
+            {
+              "name": "news api",
+              "url": "https://feeds.reuters.com/finance/markets",
+              "type": "api",
+              "api_name": "news_api_v2",
+              "enabled": true,
+              "query": "reliance stock and company news"
+            }
+          ],
+          "financial_sources": {
+            "yfinance": {
+              "enabled": true,
+              "data_types": ["daily_price", "volume", "fundamentals"]
+            },
+            "finnhub_financial": {
+              "enabled": true,
+              "data_types": ["earnings", "announcements"]
+            }
+          }
+        }
+      }
+    },
+    "NASDAQ": {
+      "name": "National Association of Securities Dealers Automated Quotations (USA)",
+      "timezone": "America/New_York",
+      "enabled": true,
+      "stocks": {
+        "PEP": {
+          "symbol": "PEP",
+          "full_name": "PepsiCo Inc.",
+          "enabled": true,
+          "social_sources": {
+            "twitter": {
+              "enabled": true,
+              "queries": ["PepsiCo stock", "PEP earnings"],
+              "limit": 20
+            },
+            "reddit": {
+              "enabled": true,
+              "subreddits": ["stocks", "investing"],
+              "limit": 15
+            }
+          },
+          "news_sources": [
+            {
+              "name": "cnbc",
+              "url": "https://feeds.cnbc.com/id/100003114/",
+              "type": "rss",
+              "enabled": true
+            },
+            {
+              "name": "reuters",
+              "url": "https://feeds.reuters.com/finance/markets",
+              "type": "rss",
+              "enabled": true
+            }
+          ],
+          "financial_sources": {
+            "yfinance": {
+              "enabled": true,
+              "data_types": ["daily_price", "volume"]
+            },
+            "finnhub_financial": {
+              "enabled": true,
+              "data_types": ["earnings", "announcements"]
+            }
+          }
+        }
+      }
+    }
+  }
+}
