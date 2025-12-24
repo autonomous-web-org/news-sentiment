@@ -1,9 +1,9 @@
-from tkinter import *
-from tkinter import ttk
 import json
 
 from classes import Panel
 from test import is_json_valid
+
+
 
 screens = {
     "Exchanges": {
