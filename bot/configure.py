@@ -1,4 +1,5 @@
 import json
+import traceback
 
 from classes import Panel
 from test import is_json_valid
@@ -41,3 +42,4 @@ try:
     panel.setup(screens)
 except Exception as e:
     print(e)
+    print(traceback.format_exc())

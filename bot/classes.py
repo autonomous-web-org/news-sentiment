@@ -40,9 +40,9 @@ class Screen(object):
         self._screen_header(title, subtitle)
         self._screen_body()
 
-
         if self.header is None or self.body is None:
-            raise "Header and Body frame incomplete" 
+            raise BaseException("Header and Body frame incomplete")
+
 
 
 class Panel(object):
@@ -100,7 +100,7 @@ class Panel(object):
         self._setup_content_frame()
 
         if self.nav is None or self.content is None:
-            raise "Navigation and Content frame incomplete" 
+            raise BaseException( "Navigation and Content frame incomplete" )
 
 
         self._setup_screens()
@@ -108,7 +108,7 @@ class Panel(object):
 
         all_screens = self.screens.keys()
         if len(all_screens) == 0:
-            raise "Screens setup incomplete" 
+            raise BaseException( "Screens setup incomplete" )
 
 
         # Show default screen
