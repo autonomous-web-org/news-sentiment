@@ -1,7 +1,7 @@
 {
   "news_apis": {
     "news_api_v2": {
-      "api_key": "asdf",
+      "api_key": "",
       "enabled": true,
       "base_endpoint": "https://newsapi.org/v2"
     }
