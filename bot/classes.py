@@ -114,7 +114,7 @@ class SecretsScreen(Screen):
         super().__init__(parent)
         self.apis_config = apis_config
 
-        self.data = {}          # {"API_NAME": {"api_key": "...", "api_secret": "...", "base_url": "..."}}
+        self.data = {}
         self.current_api = None
 
         # Tk vars
@@ -130,44 +130,72 @@ class SecretsScreen(Screen):
         self.secret_entry = None
 
 
+    def attach_alt_reveal(self, entry: ttk.Entry):
+        def reveal(_event=None):
+            # only reveal if this entry currently has focus
+            if entry == entry.focus_get():
+                entry.configure(show="")
+
+        def hide(_event=None):
+            entry.configure(show="*")
+
+        entry.bind("<KeyPress-Alt_L>", reveal)
+        entry.bind("<KeyRelease-Alt_L>", hide)
+        entry.bind("<KeyPress-Alt_R>", reveal)
+        entry.bind("<KeyRelease-Alt_R>", hide)
+
+        # if focus leaves while Alt is held, re-mask
+        entry.bind("<FocusOut>", hide)
+
+
     def _build_body(self):
         self.body.grid_columnconfigure(0, weight=1)
         self.body.grid_rowconfigure(0, weight=1)
 
-        row = 0
+        self.api_vars = {}
+
+        outer_row = 0
         for api_name, values in self.apis_config.items():
             print(api_name, values, "api")
             
             api_frame = ttk.Frame(self.body)
-            api_frame.grid(row=row, column=0, sticky="ew")
+            api_frame.grid(row=outer_row, column=0, sticky="ew")
             api_frame.grid_columnconfigure(0, weight=0)  # labels
             api_frame.grid_columnconfigure(1, weight=1)  # inputs expand [web:158]
 
-            def show_state():
-                # The .get() method retrieves the current value of the variable
-                print(f"Checkbox state: {var.get()}") 
+            checkbox_var = tk.IntVar(value=1 if values.get("enabled", False) else 0)
+            api_secret_var = tk.StringVar( value=os.getenv(values.get("api_key", "")) ) # this way we verify if the right key name is being used across configs or not
+            base_endpoint_var = tk.StringVar( value=values.get("base_endpoint", "") )
 
-            ttk.Label(api_frame, text=api_name, font=("Arial", 16, "bold")).grid(row=row, column=0, sticky="ew")
-            # Create a Tkinter variable to store the checkbox state
-            # IntVar() stores 1 if checked, 0 if unchecked by default
-            var = tk.IntVar()
+            self.api_vars[api_name] = {
+                "enabled": checkbox_var,
+                "api_secret": api_secret_var,
+                "base_endpoint": base_endpoint_var,
+            }
+
+            r = 0
+            ttk.Label(api_frame, text=api_name, font=("Arial", 16, "bold")).grid(row=r, column=0, sticky="ew")
+
             checkbox = tk.Checkbutton(api_frame, 
                 text="Enable/Disable", 
-                variable=var, # Link the variable to the checkbox
-                onvalue=1,    # Value when checked
-                offvalue=0,   # Value when unchecked
-                command=show_state) # Function to call on click (optional)
-            checkbox.grid(row=row, column=1, sticky="e")
+                variable=checkbox_var, # Link the variable to the checkbox
+                # onvalue=1,    # Value when checked
+                # offvalue=0,   # Value when unchecked
+                # command=show_state  # Function to call on click
+                )
+            checkbox.grid(row=r, column=1, sticky="e")
 
-            api_secret_key = tk.StringVar()
-            ttk.Label(api_frame, text="API Secret:", font=("Arial", 10)).grid(row=row+1, column=0, sticky="ew")
-            ttk.Entry(api_frame, textvariable=api_secret_key).grid(row=row+1, column=1, sticky="ew")
+            r += 1
+            ttk.Label(api_frame, text="API Secret (press alt to view):", font=("Arial", 10)).grid(row=r, column=0, sticky="ew")
+            api_secret_entry = ttk.Entry(api_frame, textvariable=api_secret_var, show="*")
+            api_secret_entry.grid(row=r, column=1, sticky="ew")
+            self.attach_alt_reveal(api_secret_entry)
 
-            base_endpoint = tk.StringVar()
-            ttk.Label(api_frame, text="Base Endpoint:", font=("Arial", 10)).grid(row=row+2, column=0, sticky="ew")
-            ttk.Entry(api_frame, textvariable=base_endpoint, show="*").grid(row=row+2, column=1, sticky="ew", pady=(6, 12))
+            r += 1
+            ttk.Label(api_frame, text="Base Endpoint:", font=("Arial", 10)).grid(row=r, column=0, sticky="ew")
+            ttk.Entry(api_frame, textvariable=base_endpoint_var).grid(row=r, column=1, sticky="ew", pady=(6, 12))
 
-            row = row + 3
+            outer_row += 1
 
 
         # left.grid(row=0, column=0, sticky="ns", padx=(0, 12))
