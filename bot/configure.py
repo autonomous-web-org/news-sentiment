@@ -1,3 +1,4 @@
+import os
 import json
 import traceback
 import pprint
@@ -26,19 +27,31 @@ screens = {
 }
 
 
-def load_default_config():
-    with open("default.json", "r") as default_config_file:
-        config = default_config_file.read()
+def load_config(filename="original_config.json"):
+    to_open = "default.json" # load default
+    if os.path.isfile(filename) and os.path.getsize(filename) != 0:
+        to_open = filename
 
-    return config
+    with open(to_open, "r") as config_file:
+        config = config_file.read()
+
+    return to_open, config
 
 
-def load_config():
-    pass
+def save_config(filename="original_config.json", complete_config: str=None):
+    if complete_config is None:
+        return
 
-def save_config():
-    pass
+    with open(filename, "w") as config_file:
+        config_file.write(complete_config)
 
+
+def save_env(key, value):
+    if key is None or value is None:
+        return
+
+    with open(filename, "w") as config_file:
+        config_file.write(complete_config)
 
 
 
@@ -46,8 +59,9 @@ def save_config():
 def tests():
     tests_results = []
 
-    tests_results.append( "config_integrity -> " + is_json_valid(load_default_config()) )
-    tests_results.append( "env_variables -> " + check_env() )
+    filename, config = load_config()
+    tests_results.append( f"config_integrity_and_loading ({filename}) -> " + is_json_valid(config) )
+    tests_results.append( "env_variables_loading -> " + check_env() )
 
     return tests_results
 
@@ -57,9 +71,9 @@ def tests():
 try:
     screens["Tests"]["run_tests_callback"] = tests
 
-    config = json.loads(load_default_config())
+    filename, config = load_config()
 
-    panel = Panel(screens, config)
+    panel = Panel(screens, json.loads(config), save_config, save_env)
     panel.setup()
 except Exception as e:
     print(e)

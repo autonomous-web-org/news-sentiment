@@ -1,11 +1,13 @@
 import os
-from dotenv import load_dotenv
-import tkinter as tk
-from tkinter import *
-from tkinter import ttk
-from tkinter.scrolledtext import ScrolledText
+import json
 import pprint
 from pathlib import Path
+from dotenv import load_dotenv
+
+import tkinter as tk
+from tkinter import messagebox, ttk, Tk
+from tkinter.scrolledtext import ScrolledText
+
 
 load_dotenv()
 
@@ -110,24 +112,15 @@ class TestsScreen(Screen):
 
 class SecretsScreen(Screen):
     """docstring for TestScreen"""
-    def __init__(self, parent, apis_config=None):
+    def __init__(self, parent, _save_config, save_env, apis_config=None):
         super().__init__(parent)
         self.apis_config = apis_config
 
-        self.data = {}
-        self.current_api = None
+        self.api_vars = {}
 
-        # Tk vars
-        self.api_name_var = tk.StringVar()
-        self.api_key_var = tk.StringVar()
-        self.api_secret_var = tk.StringVar()
-        self.base_url_var = tk.StringVar()
-
-        self.secret_visible = tk.BooleanVar(value=False)
-
-        # widgets
-        self.tree = None
-        self.secret_entry = None
+        # methods
+        self._save_config = _save_config
+        self.save_env = save_env
 
 
     def attach_alt_reveal(self, entry: ttk.Entry):
@@ -148,20 +141,15 @@ class SecretsScreen(Screen):
         entry.bind("<FocusOut>", hide)
 
 
-    def _build_body(self):
-        self.body.grid_columnconfigure(0, weight=1)
-        self.body.grid_rowconfigure(0, weight=1)
-
-        self.api_vars = {}
-
+    def _build_api_frames(self, content_frame):
         outer_row = 0
         for api_name, values in self.apis_config.items():
             print(api_name, values, "api")
             
-            api_frame = ttk.Frame(self.body)
+            api_frame = ttk.Frame(content_frame)
             api_frame.grid(row=outer_row, column=0, sticky="ew")
             api_frame.grid_columnconfigure(0, weight=0)  # labels
-            api_frame.grid_columnconfigure(1, weight=1)  # inputs expand [web:158]
+            api_frame.grid_columnconfigure(1, weight=1)  # inputs expand
 
             checkbox_var = tk.IntVar(value=1 if values.get("enabled", False) else 0)
             api_secret_var = tk.StringVar( value=os.getenv(values.get("api_key", "")) ) # this way we verify if the right key name is being used across configs or not
@@ -196,6 +184,44 @@ class SecretsScreen(Screen):
             ttk.Entry(api_frame, textvariable=base_endpoint_var).grid(row=r, column=1, sticky="ew", pady=(6, 12))
 
             outer_row += 1
+
+
+    def _save_secrets(self):
+        if not hasattr(self, "api_vars") or not self.api_vars:
+            messagebox.showwarning("Nothing to save", "No API fields were found.")
+            return
+
+        for api_name, vars_ in self.api_vars.items():
+            self.apis_config[api_name] = {
+                "api_key": self.apis_config[api_name]["api_key"],
+                "api_secret": "",
+                "enabled": bool(vars_["enabled"].get()),                 # IntVar.get() -> 0/1
+                "base_endpoint": vars_["base_endpoint"].get().strip(),   # StringVar.get()
+            }
+
+        # print("\n", self.apis_config, "updated\n")
+        self._save_config()
+        messagebox.showinfo("Saved", "Config Updated!")
+
+
+    def _build_body(self):
+        self.body.grid_columnconfigure(0, weight=1)
+        self.body.grid_rowconfigure(0, weight=1)
+
+        # --- content area (put your API frames here) ---
+        content = ttk.Frame(self.body)
+        content.grid(row=0, column=0, sticky="nsew")
+        content.grid_columnconfigure(0, weight=1)
+
+        # build your dynamic api frames inside content (not self.body)
+        self._build_api_frames(content)
+
+         # --- bottom bar ---
+        bottom = ttk.Frame(self.body)
+        bottom.grid(row=1, column=0, sticky="ew", pady=(10, 0))
+        bottom.grid_columnconfigure(0, weight=1)
+
+        ttk.Button(bottom, text="Save", command=self._save_secrets).grid(row=0, column=0, sticky="e")   # right aligned
 
 
         # left.grid(row=0, column=0, sticky="ns", padx=(0, 12))
@@ -252,121 +278,37 @@ class SecretsScreen(Screen):
         # # Initial load
         # self._load_and_refresh()
 
-    # ----- visibility -----
-    def _toggle_secret_visibility(self):
-        self.secret_entry.configure(show="" if self.secret_visible.get() else "*")
-
-    # ----- data <-> UI -----
-    def _load_and_refresh(self):
-        self._load_file()
-        self._refresh_tree()
-        self._clear_editor()
-
-    def _load_file(self):
-        if not self.secrets_path.exists():
-            self.data = {}
-            return
-        with self.secrets_path.open("r", encoding="utf-8") as f:
-            self.data = json.load(f)
-
-    def _save_file(self):
-        self.secrets_path.parent.mkdir(parents=True, exist_ok=True)
-        with self.secrets_path.open("w", encoding="utf-8") as f:
-            json.dump(self.data, f, indent=2)
-
-    def _refresh_tree(self):
-        for iid in self.tree.get_children():
-            self.tree.delete(iid)
-        for api_name in sorted(self.data.keys()):
-            self.tree.insert("", "end", iid=api_name, text=api_name)
-
-    def _clear_editor(self):
-        self.current_api = None
-        self.api_name_var.set("")
-        self.api_key_var.set("")
-        self.api_secret_var.set("")
-        self.base_url_var.set("")
-        self.secret_visible.set(False)
-        self._toggle_secret_visibility()
-
-    def _on_select_api(self, _event=None):
-        sel = self.tree.selection()
-        if not sel:
-            return
-        api_name = sel[0]
-        self.current_api = api_name
-
-        cfg = self.data.get(api_name, {})
-        self.api_name_var.set(api_name)
-        self.api_key_var.set(cfg.get("api_key", ""))
-        self.api_secret_var.set(cfg.get("api_secret", ""))
-        self.base_url_var.set(cfg.get("base_url", ""))
-
-    # ----- actions -----
-    def _new_api(self):
-        name = simpledialog.askstring("New API", "Enter API name:")
-        if not name:
-            return
-        name = name.strip()
-        if not name:
-            return
-        if name in self.data:
-            messagebox.showerror("Exists", f"API '{name}' already exists.")
-            return
-
-        self.data[name] = {"api_key": "", "api_secret": "", "base_url": ""}
-        self._save_file()
-        self._refresh_tree()
-        self.tree.selection_set(name)
-        self.tree.focus(name)
-        self._on_select_api()
-
-    def _delete_api(self):
-        sel = self.tree.selection()
-        if not sel:
-            return
-        api_name = sel[0]
-        if not messagebox.askyesno("Delete", f"Delete API '{api_name}'?"):
-            return
-        self.data.pop(api_name, None)
-        self._save_file()
-        self._refresh_tree()
-        self._clear_editor()
-
-    def _save_current(self):
-        if not self.current_api:
-            messagebox.showinfo("No selection", "Select an API on the left first.")
-            return
-
-        self.data[self.current_api] = {
-            "api_key": self.api_key_var.get().strip(),
-            "api_secret": self.api_secret_var.get(),  # keep as-is (don’t strip secrets unless you want to)
-            "base_url": self.base_url_var.get().strip(),
-        }
-        self._save_file()
-        messagebox.showinfo("Saved", f"Saved '{self.current_api}'.")
 
     def setup(self, title, subtitle):
         super().setup(title, subtitle)
         self._build_body()
 
 
+
 class Panel(object):
     """docstring for Panel"""
-    def __init__(self, screens, config):
+    def __init__(self, screens, config, save_config, save_env):
         super(Panel, self).__init__()
         self.root = Tk()
-        self.screens = {}
         self.nav = None
         self.content = None
+
         self.screens = screens
         self.config = config
+
+        # methods
+        self.save_config = save_config
+        self.save_env = save_env
 
 
     # Function to raise a screen
     def show_screen(self, name):
         print("show ", name)
         self.screens[name]["screen"].frame.tkraise()
+
+
+    def _save_config(self):
+        self.save_config(complete_config=json.dumps(self.config, indent=3))
 
 
     def _setup_nav(self):
@@ -390,7 +332,7 @@ class Panel(object):
             if screen_key == "Tests":
                 self.screens[screen_key]["screen"] = TestsScreen(self.content, self.screens[screen_key]["run_tests_callback"])
             elif screen_key == "Secrets":
-                self.screens[screen_key]["screen"] = SecretsScreen(self.content, self.config["apis"])
+                self.screens[screen_key]["screen"] = SecretsScreen(self.content, self._save_config, self.save_env, apis_config=self.config["apis"])
             else:
                 self.screens[screen_key]["screen"] = Screen(self.content)
 
