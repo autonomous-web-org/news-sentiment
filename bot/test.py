@@ -1,6 +1,11 @@
+import os
 import json
+from dotenv import load_dotenv
+
 
 # from main import default_config
+
+load_dotenv()
 
 
 def is_json_valid(json_string):
@@ -16,3 +21,9 @@ def is_json_valid(json_string):
     return True
 
 
+def check_env(variable="TEST", value="1"):
+    if os.getenv(variable) == value:
+        return "env variables loaded ✔"
+    else:
+        print(variable, value, os.getenv(variable))
+        return "env variables not loading"

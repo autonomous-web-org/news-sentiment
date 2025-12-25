@@ -1,13 +1,16 @@
+import os
 import json
 import traceback
 import pprint
+from dotenv import load_dotenv
 
 from classes import Panel
-from test import is_json_valid
+from test import is_json_valid, check_env
 
 
 
 # configs ====================================================================================
+load_dotenv()
 
 screens = {
     "Exchanges": {
@@ -32,6 +35,8 @@ def load_default_config():
 
     return config
 
+
+
 def load_config():
     pass
 
@@ -46,6 +51,7 @@ def tests():
     tests_results = []
 
     tests_results.append("load_default_config -> " + is_json_valid(load_default_config()))
+    tests_results.append("env variables -> " + check_env())
 
     return tests_results
 
