@@ -1,7 +1,14 @@
 {
-  "news_apis": {
-    "news_api_v2": {
-      "api_key": "",
+  "apis": {
+    "news_api": {
+      "api_key": "NEWSAPI_KEY",
+      "api_secret": "",
+      "enabled": true,
+      "base_endpoint": "https://newsapi.org/v2"
+    },
+    "news_api2": {
+      "api_key": "NEWSAPI_KEY",
+      "api_secret": "",
       "enabled": true,
       "base_endpoint": "https://newsapi.org/v2"
     }
@@ -45,7 +52,7 @@
               "name": "news api",
               "url": "https://feeds.reuters.com/finance/markets",
               "type": "api",
-              "api_name": "news_api_v2",
+              "api_name": "news_api",
               "enabled": true,
               "query": "reliance stock and company news"
             }

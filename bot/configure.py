@@ -1,8 +1,6 @@
-import os
 import json
 import traceback
 import pprint
-from dotenv import load_dotenv
 
 from classes import Panel
 from test import is_json_valid, check_env
@@ -10,7 +8,6 @@ from test import is_json_valid, check_env
 
 
 # configs ====================================================================================
-load_dotenv()
 
 screens = {
     "Exchanges": {
@@ -36,7 +33,6 @@ def load_default_config():
     return config
 
 
-
 def load_config():
     pass
 
@@ -50,8 +46,8 @@ def save_config():
 def tests():
     tests_results = []
 
-    tests_results.append("load_default_config -> " + is_json_valid(load_default_config()))
-    tests_results.append("env variables -> " + check_env())
+    tests_results.append( "config_integrity -> " + is_json_valid(load_default_config()) )
+    tests_results.append( "env_variables -> " + check_env() )
 
     return tests_results
 
@@ -61,8 +57,10 @@ def tests():
 try:
     screens["Tests"]["run_tests_callback"] = tests
 
-    panel = Panel()
-    panel.setup(screens)
+    config = json.loads(load_default_config())
+
+    panel = Panel(screens, config)
+    panel.setup()
 except Exception as e:
     print(e)
     print(traceback.format_exc())

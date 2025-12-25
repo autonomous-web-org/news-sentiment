@@ -1,8 +1,13 @@
+import os
+from dotenv import load_dotenv
 import tkinter as tk
 from tkinter import *
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 import pprint
+from pathlib import Path
+
+load_dotenv()
 
 
 class Screen(object):
@@ -18,10 +23,10 @@ class Screen(object):
     def _screen_header(self, title, subtitle):
         self.header = ttk.Frame(self.frame)
         self.header.grid(row=0, column=0, sticky="ew")
-        # self.header.grid_columnconfigure(0, weight=1)
+        self.header.grid_columnconfigure(0, weight=1)
 
-        ttk.Label(self.header, text=title, font=("Arial", 16, "bold")).grid(row=0, column=0, sticky="w")
-        ttk.Label(self.header, text=subtitle, font=("Arial", 10)).grid(row=1, column=0, sticky="w", pady=(4, 0))
+        ttk.Label(self.header, text=title, font=("Arial", 16, "bold"), anchor="center").grid(row=0, column=0, sticky="ew")
+        ttk.Label(self.header, text=subtitle, font=("Arial", 10), anchor="center").grid(row=1, column=0, sticky="ew", pady=(0, 21))
 
         return self.header
 
@@ -37,15 +42,14 @@ class Screen(object):
         # Stack each screen in same cell in parent (content)
         self.frame.grid(row=0, column=0, sticky="nsew")
         # Screen layout: header row + body row
-        self.frame.grid_columnconfigure(0, weight=1)
         self.frame.grid_rowconfigure(1, weight=1)
+        self.frame.grid_columnconfigure(0, weight=1)
 
         self._screen_header(title, subtitle)
         self._screen_body()
 
         if self.header is None or self.body is None:
             raise Exception("Header and Body frame incomplete")
-
 
 
 class TestsScreen(Screen):
@@ -104,16 +108,231 @@ class TestsScreen(Screen):
         super().setup(title, subtitle)
         self._build_body()
 
+class SecretsScreen(Screen):
+    """docstring for TestScreen"""
+    def __init__(self, parent, apis_config=None):
+        super().__init__(parent)
+        self.apis_config = apis_config
+
+        self.data = {}          # {"API_NAME": {"api_key": "...", "api_secret": "...", "base_url": "..."}}
+        self.current_api = None
+
+        # Tk vars
+        self.api_name_var = tk.StringVar()
+        self.api_key_var = tk.StringVar()
+        self.api_secret_var = tk.StringVar()
+        self.base_url_var = tk.StringVar()
+
+        self.secret_visible = tk.BooleanVar(value=False)
+
+        # widgets
+        self.tree = None
+        self.secret_entry = None
+
+
+    def _build_body(self):
+        self.body.grid_columnconfigure(0, weight=1)
+        self.body.grid_rowconfigure(0, weight=1)
+
+        row = 0
+        for api_name, values in self.apis_config.items():
+            print(api_name, values, "api")
+            
+            api_frame = ttk.Frame(self.body)
+            api_frame.grid(row=row, column=0, sticky="ew")
+            api_frame.grid_columnconfigure(0, weight=0)  # labels
+            api_frame.grid_columnconfigure(1, weight=1)  # inputs expand [web:158]
+
+            def show_state():
+                # The .get() method retrieves the current value of the variable
+                print(f"Checkbox state: {var.get()}") 
+
+            ttk.Label(api_frame, text=api_name, font=("Arial", 16, "bold")).grid(row=row, column=0, sticky="ew")
+            # Create a Tkinter variable to store the checkbox state
+            # IntVar() stores 1 if checked, 0 if unchecked by default
+            var = tk.IntVar()
+            checkbox = tk.Checkbutton(api_frame, 
+                text="Enable/Disable", 
+                variable=var, # Link the variable to the checkbox
+                onvalue=1,    # Value when checked
+                offvalue=0,   # Value when unchecked
+                command=show_state) # Function to call on click (optional)
+            checkbox.grid(row=row, column=1, sticky="e")
+
+            api_secret_key = tk.StringVar()
+            ttk.Label(api_frame, text="API Secret:", font=("Arial", 10)).grid(row=row+1, column=0, sticky="ew")
+            ttk.Entry(api_frame, textvariable=api_secret_key).grid(row=row+1, column=1, sticky="ew")
+
+            base_endpoint = tk.StringVar()
+            ttk.Label(api_frame, text="Base Endpoint:", font=("Arial", 10)).grid(row=row+2, column=0, sticky="ew")
+            ttk.Entry(api_frame, textvariable=base_endpoint, show="*").grid(row=row+2, column=1, sticky="ew", pady=(6, 12))
+
+            row = row + 3
+
+
+        # left.grid(row=0, column=0, sticky="ns", padx=(0, 12))
+        # left.grid_rowconfigure(1, weight=1)
+
+        # right = ttk.Frame(self.body)
+        # right.grid(row=0, column=1, sticky="nsew")
+        # right.grid_columnconfigure(1, weight=1)
+
+        # # ---- Left: API list ----
+        # ttk.Label(left, text="APIs").grid(row=0, column=0, sticky="w", pady=(0, 6))
+
+        # self.tree = ttk.Treeview(left, columns=("name",), show="tree")
+        # self.tree.grid(row=1, column=0, sticky="ns")
+        # self.tree.bind("<<TreeviewSelect>>", self._on_select_api)
+
+        # btns = ttk.Frame(left)
+        # btns.grid(row=2, column=0, sticky="ew", pady=(8, 0))
+        # ttk.Button(btns, text="New", command=self._new_api).grid(row=0, column=0, sticky="w")
+        # ttk.Button(btns, text="Delete", command=self._delete_api).grid(row=0, column=1, sticky="w", padx=(8, 0))
+
+        # # ---- Right: Editor ----
+        # r = 0
+        # ttk.Label(right, text="API name").grid(row=r, column=0, sticky="w", pady=(0, 4))
+        # ttk.Entry(right, textvariable=self.api_name_var, state="readonly").grid(row=r, column=1, sticky="ew", pady=(0, 4))
+        # r += 1
+
+        # ttk.Label(right, text="API key").grid(row=r, column=0, sticky="w", pady=(0, 4))
+        # ttk.Entry(right, textvariable=self.api_key_var).grid(row=r, column=1, sticky="ew", pady=(0, 4))
+        # r += 1
+
+        # ttk.Label(right, text="API secret").grid(row=r, column=0, sticky="w", pady=(0, 4))
+        # self.secret_entry = ttk.Entry(right, textvariable=self.api_secret_var, show="*")
+        # self.secret_entry.grid(row=r, column=1, sticky="ew", pady=(0, 4))
+        # r += 1
+
+        # ttk.Checkbutton(
+        #     right,
+        #     text="Show secret",
+        #     variable=self.secret_visible,
+        #     command=self._toggle_secret_visibility
+        # ).grid(row=r, column=1, sticky="w", pady=(0, 8))
+        # r += 1
+
+        # ttk.Label(right, text="Base URL").grid(row=r, column=0, sticky="w", pady=(0, 4))
+        # ttk.Entry(right, textvariable=self.base_url_var).grid(row=r, column=1, sticky="ew", pady=(0, 4))
+        # r += 1
+
+        # action_row = ttk.Frame(right)
+        # action_row.grid(row=r, column=1, sticky="ew", pady=(10, 0))
+        # ttk.Button(action_row, text="Save", command=self._save_current).grid(row=0, column=0, sticky="w")
+        # ttk.Button(action_row, text="Reload file", command=self._load_and_refresh).grid(row=0, column=1, sticky="w", padx=(8, 0))
+
+        # # Initial load
+        # self._load_and_refresh()
+
+    # ----- visibility -----
+    def _toggle_secret_visibility(self):
+        self.secret_entry.configure(show="" if self.secret_visible.get() else "*")
+
+    # ----- data <-> UI -----
+    def _load_and_refresh(self):
+        self._load_file()
+        self._refresh_tree()
+        self._clear_editor()
+
+    def _load_file(self):
+        if not self.secrets_path.exists():
+            self.data = {}
+            return
+        with self.secrets_path.open("r", encoding="utf-8") as f:
+            self.data = json.load(f)
+
+    def _save_file(self):
+        self.secrets_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.secrets_path.open("w", encoding="utf-8") as f:
+            json.dump(self.data, f, indent=2)
+
+    def _refresh_tree(self):
+        for iid in self.tree.get_children():
+            self.tree.delete(iid)
+        for api_name in sorted(self.data.keys()):
+            self.tree.insert("", "end", iid=api_name, text=api_name)
+
+    def _clear_editor(self):
+        self.current_api = None
+        self.api_name_var.set("")
+        self.api_key_var.set("")
+        self.api_secret_var.set("")
+        self.base_url_var.set("")
+        self.secret_visible.set(False)
+        self._toggle_secret_visibility()
+
+    def _on_select_api(self, _event=None):
+        sel = self.tree.selection()
+        if not sel:
+            return
+        api_name = sel[0]
+        self.current_api = api_name
+
+        cfg = self.data.get(api_name, {})
+        self.api_name_var.set(api_name)
+        self.api_key_var.set(cfg.get("api_key", ""))
+        self.api_secret_var.set(cfg.get("api_secret", ""))
+        self.base_url_var.set(cfg.get("base_url", ""))
+
+    # ----- actions -----
+    def _new_api(self):
+        name = simpledialog.askstring("New API", "Enter API name:")
+        if not name:
+            return
+        name = name.strip()
+        if not name:
+            return
+        if name in self.data:
+            messagebox.showerror("Exists", f"API '{name}' already exists.")
+            return
+
+        self.data[name] = {"api_key": "", "api_secret": "", "base_url": ""}
+        self._save_file()
+        self._refresh_tree()
+        self.tree.selection_set(name)
+        self.tree.focus(name)
+        self._on_select_api()
+
+    def _delete_api(self):
+        sel = self.tree.selection()
+        if not sel:
+            return
+        api_name = sel[0]
+        if not messagebox.askyesno("Delete", f"Delete API '{api_name}'?"):
+            return
+        self.data.pop(api_name, None)
+        self._save_file()
+        self._refresh_tree()
+        self._clear_editor()
+
+    def _save_current(self):
+        if not self.current_api:
+            messagebox.showinfo("No selection", "Select an API on the left first.")
+            return
+
+        self.data[self.current_api] = {
+            "api_key": self.api_key_var.get().strip(),
+            "api_secret": self.api_secret_var.get(),  # keep as-is (don’t strip secrets unless you want to)
+            "base_url": self.base_url_var.get().strip(),
+        }
+        self._save_file()
+        messagebox.showinfo("Saved", f"Saved '{self.current_api}'.")
+
+    def setup(self, title, subtitle):
+        super().setup(title, subtitle)
+        self._build_body()
 
 
 class Panel(object):
     """docstring for Panel"""
-    def __init__(self):
+    def __init__(self, screens, config):
         super(Panel, self).__init__()
         self.root = Tk()
         self.screens = {}
         self.nav = None
         self.content = None
+        self.screens = screens
+        self.config = config
 
 
     # Function to raise a screen
@@ -142,22 +361,24 @@ class Panel(object):
         for screen_key in self.screens:
             if screen_key == "Tests":
                 self.screens[screen_key]["screen"] = TestsScreen(self.content, self.screens[screen_key]["run_tests_callback"])
+            elif screen_key == "Secrets":
+                self.screens[screen_key]["screen"] = SecretsScreen(self.content, self.config["apis"])
             else:
                 self.screens[screen_key]["screen"] = Screen(self.content)
+
             self.screens[screen_key]["screen"].setup(self.screens[screen_key]["title"], self.screens[screen_key]["subtitle"])
 
 
-    def setup(self, screens):
-        if screens is None:
+    def setup(self):
+        if self.screens is None or self.config is None:
             return
 
         self.root.title("Bot configuration")
         self.root.geometry("900x600")
+
         # Make content stretch with window
         self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
-
-        self.screens = screens;
 
 
         self._setup_nav()
