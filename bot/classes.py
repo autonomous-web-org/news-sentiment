@@ -7,6 +7,13 @@ from dotenv import load_dotenv
 import tkinter as tk
 from tkinter import messagebox, ttk, Tk
 from tkinter.scrolledtext import ScrolledText
+import ctypes
+
+# Make the app DPI aware to prevent blurriness on high-resolution screens
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(True)
+except AttributeError:
+    pass # This line is for compatibility with older Windows versions
 
 
 load_dotenv()
@@ -89,9 +96,6 @@ class TestsScreen(Screen):
 
 
     def run_tests(self):
-        if self.run_tests_callback is None:
-            return
-
         self.test_log.configure(state="normal")
         self.test_log.delete("1.0", tk.END)   # clear all text
         self.test_log.configure(state="disabled")
@@ -108,6 +112,11 @@ class TestsScreen(Screen):
 
     def setup(self, title, subtitle):
         super().setup(title, subtitle)
+
+        if self.run_tests_callback is None:
+            messagebox.showwarning("Warning", "parameters/methods are missing.")
+            return
+
         self._build_body()
 
 class SecretsScreen(Screen):
@@ -224,65 +233,35 @@ class SecretsScreen(Screen):
         ttk.Button(bottom, text="Save", command=self._save_secrets).grid(row=0, column=0, sticky="e")   # right aligned
 
 
-        # left.grid(row=0, column=0, sticky="ns", padx=(0, 12))
-        # left.grid_rowconfigure(1, weight=1)
+    def setup(self, title, subtitle):
+        super().setup(title, subtitle)
 
-        # right = ttk.Frame(self.body)
-        # right.grid(row=0, column=1, sticky="nsew")
-        # right.grid_columnconfigure(1, weight=1)
+        if self.apis_config is None:
+            messagebox.showwarning("Warning", "configs and parameters/methods are missing.")
+            return
 
-        # # ---- Left: API list ----
-        # ttk.Label(left, text="APIs").grid(row=0, column=0, sticky="w", pady=(0, 6))
+        self._build_body()
 
-        # self.tree = ttk.Treeview(left, columns=("name",), show="tree")
-        # self.tree.grid(row=1, column=0, sticky="ns")
-        # self.tree.bind("<<TreeviewSelect>>", self._on_select_api)
+class ExchangesScreen(Screen):
+    """docstring for ClassName"""
+    def __init__(self, parent, _save_config, exchange_config=None):
+        super().__init__(parent)
+        self.exchange_config = exchange_config
 
-        # btns = ttk.Frame(left)
-        # btns.grid(row=2, column=0, sticky="ew", pady=(8, 0))
-        # ttk.Button(btns, text="New", command=self._new_api).grid(row=0, column=0, sticky="w")
-        # ttk.Button(btns, text="Delete", command=self._delete_api).grid(row=0, column=1, sticky="w", padx=(8, 0))
+        self.stock_vars = {}
 
-        # # ---- Right: Editor ----
-        # r = 0
-        # ttk.Label(right, text="API name").grid(row=r, column=0, sticky="w", pady=(0, 4))
-        # ttk.Entry(right, textvariable=self.api_name_var, state="readonly").grid(row=r, column=1, sticky="ew", pady=(0, 4))
-        # r += 1
-
-        # ttk.Label(right, text="API key").grid(row=r, column=0, sticky="w", pady=(0, 4))
-        # ttk.Entry(right, textvariable=self.api_key_var).grid(row=r, column=1, sticky="ew", pady=(0, 4))
-        # r += 1
-
-        # ttk.Label(right, text="API secret").grid(row=r, column=0, sticky="w", pady=(0, 4))
-        # self.secret_entry = ttk.Entry(right, textvariable=self.api_secret_var, show="*")
-        # self.secret_entry.grid(row=r, column=1, sticky="ew", pady=(0, 4))
-        # r += 1
-
-        # ttk.Checkbutton(
-        #     right,
-        #     text="Show secret",
-        #     variable=self.secret_visible,
-        #     command=self._toggle_secret_visibility
-        # ).grid(row=r, column=1, sticky="w", pady=(0, 8))
-        # r += 1
-
-        # ttk.Label(right, text="Base URL").grid(row=r, column=0, sticky="w", pady=(0, 4))
-        # ttk.Entry(right, textvariable=self.base_url_var).grid(row=r, column=1, sticky="ew", pady=(0, 4))
-        # r += 1
-
-        # action_row = ttk.Frame(right)
-        # action_row.grid(row=r, column=1, sticky="ew", pady=(10, 0))
-        # ttk.Button(action_row, text="Save", command=self._save_current).grid(row=0, column=0, sticky="w")
-        # ttk.Button(action_row, text="Reload file", command=self._load_and_refresh).grid(row=0, column=1, sticky="w", padx=(8, 0))
-
-        # # Initial load
-        # self._load_and_refresh()
+        # methods
+        self._save_config = _save_config
 
 
     def setup(self, title, subtitle):
         super().setup(title, subtitle)
-        self._build_body()
 
+        if self.exchange_config is None:
+            messagebox.showwarning("Warning", "configs and parameters/methods are missing.")
+            return
+
+        self._build_body()     
 
 
 class Panel(object):
@@ -290,6 +269,8 @@ class Panel(object):
     def __init__(self, screens, config, save_config, save_env):
         super(Panel, self).__init__()
         self.root = Tk()
+        # self.root.tk.call('tk', 'scaling', 2)
+
         self.nav = None
         self.content = None
 
@@ -341,6 +322,7 @@ class Panel(object):
 
     def setup(self):
         if self.screens is None or self.config is None:
+            messagebox.showwarning("Warning", "screens and config are missing.")
             return
 
         self.root.title("Bot configuration")

@@ -17,10 +17,11 @@
     "NSE": {
       "name": "National Stock Exchange (India)",
       "timezone": "Asia/Kolkata",
+      "symbol": "NSE",
       "enabled": true,
       "stocks": {
         "RELIANCE": {
-          "symbol": "RELIANCE.NS",
+          "ticker": "RELIANCE",
           "full_name": "Reliance Industries Limited",
           "enabled": true,
           "social_sources": {
@@ -50,7 +51,6 @@
             },
             {
               "name": "news api",
-              "url": "https://feeds.reuters.com/finance/markets",
               "type": "api",
               "api_name": "news_api",
               "enabled": true,
@@ -73,10 +73,11 @@
     "NASDAQ": {
       "name": "National Association of Securities Dealers Automated Quotations (USA)",
       "timezone": "America/New_York",
+      "symbol": "NASDAQ",
       "enabled": true,
       "stocks": {
         "PEP": {
-          "symbol": "PEP",
+          "ticker": "PEP",
           "full_name": "PepsiCo Inc.",
           "enabled": true,
           "social_sources": {
