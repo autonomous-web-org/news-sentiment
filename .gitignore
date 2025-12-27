@@ -253,3 +253,4 @@ marimo/_lsp/
 __marimo__/
 bot/config.yaml
 bot/original_config.json
+bot/test.py

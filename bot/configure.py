@@ -2,9 +2,12 @@ import os
 import json
 import traceback
 import pprint
+from PyQt6.QtWidgets import (
+    QApplication,
+)
 
-from classes import Panel
-from test import is_json_valid, check_env
+from classes1 import Panel
+from tests import is_json_valid, check_env
 
 
 
@@ -15,9 +18,9 @@ screens = {
         "title": "Exchanges/Stocks",
         "subtitle": "Manage exchanges and respective stocks"
     },
-    "Secrets": {
-        "title": "Secrets",
-        "subtitle": "View and Edit secrets"
+    "APIs": {
+        "title": "API management",
+        "subtitle": "View and Edit APIs"
     },
     "Tests": {
         "title": "Tests",
@@ -63,6 +66,7 @@ def tests():
     tests_results.append( f"config_integrity_and_loading ({filename}) -> " + is_json_valid(config) )
     tests_results.append( "env_variables_loading -> " + check_env() )
 
+
     return tests_results
 
 
@@ -73,8 +77,11 @@ try:
 
     filename, config = load_config()
 
-    panel = Panel(screens, json.loads(config), save_config, save_env)
+    app = QApplication([])
+    panel = Panel(screens=screens, config=json.loads(config), save_config=save_config, save_env=save_env)
     panel.setup()
+    panel.window.show()
+    app.exec()
 except Exception as e:
     print(e)
     print(traceback.format_exc())
