@@ -1,10 +1,11 @@
+import re
 import os
 import json
 import pprint
 from pathlib import Path
 from dotenv import load_dotenv
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimeZone
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -26,7 +27,12 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QSizePolicy,
     QStackedWidget,
+    QFormLayout, QComboBox
 )
+from PyQt6.QtGui import QBrush, QColor
+
+
+
 
 
 load_dotenv()
@@ -81,6 +87,11 @@ class Screen(object):
         self.body = body
         self.frame_layout.addWidget(self.body, 1)
         return self.body
+
+    def _apply_enabled_style(self, item, enabled: bool):
+        # Keep selectable; only change appearance.
+        color = QColor("#fff") if enabled else QColor("#9aa0a6")
+        item.setForeground(0, QBrush(color))  # gray-out via foreground role [web:84][web:79]
 
     def setup(self, title: str, subtitle: str):
         self._screen_header(title, subtitle)
@@ -280,10 +291,19 @@ class APIScreen(Screen):
         name, ok = QInputDialog.getText(self.frame, "Input", "API name")
         if not ok or not name.strip():
             return
-        api_name = name.strip()
 
+        api_name = name.strip()
         if api_name in self.apis_config:
             QMessageBox.warning(self.frame, "Exists", f"'{api_name}' already exists.")
+            return
+
+        # Only A-Z, a-z, 0-9, _
+        if not re.fullmatch(r"[A-Za-z0-9_]+", api_name):
+            QMessageBox.warning(
+                self.frame,
+                "Invalid name",
+                "Use only letters, digits, and underscore (_). No spaces or other characters.",
+            )
             return
 
         # You must decide defaults; keeping config structure the same.
@@ -296,6 +316,7 @@ class APIScreen(Screen):
         }
 
         self._add_api_card(api_name, self.apis_config[api_name])
+        self._save()
 
     def _delete(self, api_name: str):
         reply = QMessageBox.question(self.frame, "Confirm delete", f"Delete '{api_name}'?")
@@ -309,7 +330,7 @@ class APIScreen(Screen):
 
         self.apis_config.pop(api_name, None)
 
-        # Save immediately (keeps your old behavior)
+        # Save immediately
         self._save()
 
     def _save(self):
@@ -337,9 +358,10 @@ class APIScreen(Screen):
 
 
 class ExchangesScreen(Screen):
-    def __init__(self, parent, _save_config, exchange_config=None):
+    def __init__(self, parent, _save_config, exchange_config=None, apis_config=None):
         super().__init__(parent)
         self.exchange_config = exchange_config
+        self.apis_config = apis_config
         self.tree = None
         self.right = None
 
@@ -374,6 +396,7 @@ class ExchangesScreen(Screen):
             ex_text = f"{ex_key} - {ex.get('name', ex_key)}"
 
             ex_item = QTreeWidgetItem([ex_text])
+            self._apply_enabled_style(ex_item, ex_enabled)
             ex_item.setData(0, Qt.ItemDataRole.UserRole, ("ex", ex_key))
             if not ex_enabled:
                 ex_item.setForeground(0, ex_item.foreground(0).color().fromString("#9aa0a6"))
@@ -386,6 +409,7 @@ class ExchangesScreen(Screen):
                 st_text = f"{ticker} - {stock.get('full_name', ticker)}"
 
                 st_item = QTreeWidgetItem([st_text])
+                self._apply_enabled_style(st_item, stock_enabled)
                 st_item.setData(0, Qt.ItemDataRole.UserRole, ("st", ex_key, ticker))
                 if not stock_enabled:
                     st_item.setForeground(0, st_item.foreground(0).color().fromString("#9aa0a6"))
@@ -441,27 +465,311 @@ class ExchangesScreen(Screen):
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
 
-    def _on_tree_select(self, current, _previous):
-        for i in reversed(range(self.right.layout().count())):
-            item = self.right.layout().itemAt(i)
-            w = item.widget()
-            if w is not None:
-                w.setParent(None)
-                w.deleteLater()
+    def _build_exchange_editor(self, ex_key: str, tree_item):
+        ex = self.exchange_config[ex_key]
 
+        wrapper = QWidget(self.right)
+        v = QVBoxLayout(wrapper)
+        v.setContentsMargins(10, 10, 10, 10)
+        v.setSpacing(12)
+
+        title = QLabel(f"Exchange: {ex_key}", wrapper)
+        f = title.font()
+        f.setPointSize(13)
+        f.setBold(True)
+        title.setFont(f)
+        v.addWidget(title)
+
+        form = QFormLayout()
+        v.addLayout(form)
+
+        name_in = QLineEdit(wrapper)
+        name_in.setText(ex.get("name", ""))
+
+        symbol_in = QLineEdit(wrapper)
+        symbol_in.setText(ex.get("symbol", ""))
+
+        enabled_in = QCheckBox("Enabled", wrapper)
+        enabled_in.setChecked(bool(ex.get("enabled", True)))
+
+        tz_in = QComboBox(wrapper)
+        # QTimeZone can list available IANA IDs on the system [web:62]
+        tz_ids = [bytes(z).decode("utf-8", "ignore") for z in QTimeZone.availableTimeZoneIds()]
+        tz_ids.sort()
+        tz_in.addItems(tz_ids)
+        current_tz = ex.get("timezone", "UTC")
+        if current_tz in tz_ids:
+            tz_in.setCurrentText(current_tz)
+        else:
+            tz_in.insertItem(0, current_tz)
+            tz_in.setCurrentIndex(0)
+
+        form.addRow("Name", name_in)
+        form.addRow("Symbol", symbol_in)
+        form.addRow("Timezone", tz_in)
+        form.addRow("", enabled_in)
+
+        btns = QHBoxLayout()
+        btns.addStretch(1)
+
+        save_btn = QPushButton("Save exchange", wrapper)
+        btns.addWidget(save_btn)
+        v.addLayout(btns)
+
+        def on_save():
+            ex = self.exchange_config[ex_key]
+
+            ex["name"] = name_in.text().strip()
+            ex["symbol"] = symbol_in.text().strip()      # only this field changes
+            ex["timezone"] = tz_in.currentText().strip()
+            ex["enabled"] = bool(enabled_in.isChecked())
+
+            # Update the tree label (display only)
+            self._apply_enabled_style(tree_item, ex["enabled"])
+            self._refresh_children_styles_for_exchange(ex_key, tree_item)
+            tree_item.setText(0, f"{ex_key} - {ex.get('name', ex_key)}")  # display refresh [web:79]
+
+            self._save_config()
+            QMessageBox.information(self.frame, "Saved", "Exchange updated.")
+
+        save_btn.clicked.connect(on_save)
+
+        self.right.layout().addWidget(wrapper)
+        self.right.layout().addStretch(1)
+
+    def _build_stock_editor(self, ex_key: str, ticker: str, tree_item):
+        stock = self.exchange_config[ex_key]["stocks"][ticker]
+
+        wrapper = QWidget(self.right)
+        v = QVBoxLayout(wrapper)
+        v.setContentsMargins(10, 10, 10, 10)
+        v.setSpacing(12)
+
+        title = QLabel(f"Stock: {ex_key} / {ticker}", wrapper)
+        f = title.font()
+        f.setPointSize(13)
+        f.setBold(True)
+        title.setFont(f)
+        v.addWidget(title)
+
+        form = QFormLayout()
+        v.addLayout(form)
+
+        ticker_in = QLineEdit(wrapper)
+        ticker_in.setText(stock.get("ticker", ticker))
+
+        full_name_in = QLineEdit(wrapper)
+        full_name_in.setText(stock.get("full_name", ""))
+
+        enabled_in = QCheckBox("Enabled", wrapper)
+        enabled_in.setChecked(bool(stock.get("enabled", True)))
+
+        form.addRow("Ticker", ticker_in)
+        form.addRow("Full name", full_name_in)
+        form.addRow("", enabled_in)
+
+        btns = QHBoxLayout()
+        btns.addStretch(1)
+
+        save_btn = QPushButton("Save stock", wrapper)
+        btns.addWidget(save_btn)
+        v.addLayout(btns)
+
+        def on_save():
+            stock = self.exchange_config[ex_key]["stocks"][ticker]
+
+            stock["ticker"] = ticker_in.text().strip()   # only this field changes
+            stock["full_name"] = full_name_in.text().strip()
+            stock["enabled"] = bool(enabled_in.isChecked())
+
+            # Update the tree label (display only)
+            tree_item.setText(0, f"{ticker} - {stock.get('full_name', ticker)}")  # [web:79]
+            ex_enabled = bool(self.exchange_config[ex_key].get("enabled", True))
+            self._apply_enabled_style(tree_item, ex_enabled and stock["enabled"])
+
+            self._save_config()
+            QMessageBox.information(self.frame, "Saved", "Stock updated.")
+
+        save_btn.clicked.connect(on_save)
+
+        self.right.layout().addWidget(wrapper)
+        self.right.layout().addStretch(1)
+
+    def _build_news_source_editor(self, ex_key: str, ticker: str, idx: int, tree_item):
+        stock = self.exchange_config[ex_key]["stocks"][ticker]
+        src = stock["news_sources"][idx]
+
+        wrapper = QWidget(self.right)
+        v = QVBoxLayout(wrapper)
+        v.setContentsMargins(10, 10, 10, 10)
+        v.setSpacing(12)
+
+        title = QLabel(f"News source: {ex_key} / {ticker} / #{idx}", wrapper)
+        f = title.font()
+        f.setPointSize(13)
+        f.setBold(True)
+        title.setFont(f)
+        v.addWidget(title)
+
+        form = QFormLayout()
+        v.addLayout(form)
+
+        enabled_in = QCheckBox("Enabled", wrapper)
+        enabled_in.setChecked(bool(src.get("enabled", True)))
+
+        type_in = QComboBox(wrapper)
+        type_in.setEditable(False)
+        type_in.addItems(["rss", "api"])
+        current_type = src.get("type", "rss")
+        if current_type in ("rss", "api"):
+            type_in.setCurrentText(current_type)
+
+        name_in = QComboBox(wrapper)
+        name_in.setEditable(False)
+
+        query_in = QLineEdit(wrapper)
+        query_in.setText(src.get("query", ""))
+        query_in.setMaxLength(800)  # rough cap for ~100 words [web:78]
+
+        form.addRow("", enabled_in)
+        form.addRow("Type", type_in)
+        form.addRow("Name", name_in)
+        form.addRow("Query (<=100 words)", query_in)
+
+        def repopulate_name_dropdown():
+            name_in.blockSignals(True)
+            name_in.clear()
+
+            t = type_in.currentText().strip()
+            cur = src.get("name", "")
+
+            if t == "api":
+                # from "apis" config
+                api_names = sorted(list((self.apis_config or {}).keys()))
+                if api_names:
+                    name_in.addItems(api_names)
+                    if cur in api_names:
+                        name_in.setCurrentText(cur)
+                    else:
+                        name_in.setCurrentIndex(0)
+                # if no apis, leave combo empty
+            else:  # rss
+                # later you'll add self.rss_config = config["rss"]
+                rss_cfg = getattr(self, "rss_config", None)
+                if rss_cfg:
+                    rss_names = sorted(list(rss_cfg.keys()))
+                    if rss_names:
+                        name_in.addItems(rss_names)
+                        if cur in rss_names:
+                            name_in.setCurrentText(cur)
+                        else:
+                            name_in.setCurrentIndex(0)
+                # if no rss config yet, keep combo empty (allowed) [web:103]
+
+            name_in.blockSignals(False)
+
+        repopulate_name_dropdown()
+        type_in.currentTextChanged.connect(lambda _t: repopulate_name_dropdown())
+
+        btns = QHBoxLayout()
+        btns.addStretch(1)
+        save_btn = QPushButton("Save news source", wrapper)
+        btns.addWidget(save_btn)
+        v.addLayout(btns)
+
+        def on_save():
+            q = query_in.text().strip()
+            if q:
+                word_count = len(q.split())
+                if word_count > 100:
+                    QMessageBox.warning(self.frame, "Invalid query", f"Query too long: {word_count} words (max 100).")
+                    return
+
+            src["enabled"] = bool(enabled_in.isChecked())
+            src["type"] = type_in.currentText().strip()
+            src["name"] = name_in.currentText().strip()  # may be "" if combo is empty
+            src["query"] = q
+
+            # update tree text
+            display_name = src.get("name") or f"news_{idx}"
+            tree_item.setText(0, display_name)  # [web:79]
+
+            ex_enabled = bool(self.exchange_config[ex_key].get("enabled", True))
+            stock_enabled = ex_enabled and bool(stock.get("enabled", True))
+            effective = stock_enabled and bool(src.get("enabled", True))
+            self._apply_enabled_style(tree_item, effective)
+
+            self._save_config()
+            QMessageBox.information(self.frame, "Saved", "News source updated.")
+
+        save_btn.clicked.connect(on_save)
+
+        self.right.layout().addWidget(wrapper)
+        self.right.layout().addStretch(1)
+
+    def _refresh_children_styles_for_exchange(self, ex_key: str, ex_item):
+        ex = self.exchange_config[ex_key]
+        ex_enabled = bool(ex.get("enabled", True))
+
+        for i in range(ex_item.childCount()):
+            st_item = ex_item.child(i)
+            payload = st_item.data(0, Qt.ItemDataRole.UserRole)
+            if not payload or payload[0] != "st":
+                continue
+
+            ticker_key = payload[2]
+            stock = ex.get("stocks", {}).get(ticker_key, {})
+            stock_enabled = ex_enabled and bool(stock.get("enabled", True))
+            self._apply_enabled_style(st_item, stock_enabled)
+
+            # If you also want to gray out nested groups/sources:
+            for j in range(st_item.childCount()):
+                grp = st_item.child(j)
+                self._apply_enabled_style(grp, stock_enabled)
+                for k in range(grp.childCount()):
+                    src = grp.child(k)
+                    self._apply_enabled_style(src, stock_enabled)
+
+    def _on_tree_select(self, current, _previous):
         if current is None:
-            self.right.layout().addWidget(QLabel("Select an item on the left"))
-            self.right.layout().addStretch(1)
             return
 
-        text = current.text(0)
-        self.right.layout().addWidget(QLabel(f"Selected: {text}"), 0, Qt.AlignmentFlag.AlignTop)
-        self.right.layout().addStretch(1)
+        payload = current.data(0, Qt.ItemDataRole.UserRole)
+        self._clear_right()
+
+        if not payload:
+            self.right.layout().addWidget(QLabel("Select an item on the left"))
+            return
+
+        node_type = payload[0]
+        if node_type == "ex":
+            ex_key = payload[1]
+            self._build_exchange_editor(ex_key, current)
+        elif node_type == "st":
+            ex_key, ticker = payload[1], payload[2]
+            self._build_stock_editor(ex_key, ticker, current)
+        elif node_type == "src_news":
+            ex_key, ticker, idx = payload[1], payload[2], payload[3]
+            self._build_news_source_editor(ex_key, ticker, idx, current)
+        else:
+            self.right.layout().addWidget(QLabel(current.text(0)))
+
+    def _clear_right(self):
+        lay = self.right.layout()
+        if lay is None:
+            lay = QVBoxLayout(self.right)
+            lay.setContentsMargins(0, 0, 0, 0)
+        while lay.count():
+            item = lay.takeAt(0)
+            w = item.widget()
+            if w:
+                w.setParent(None)
+                w.deleteLater()
 
     def setup(self, title, subtitle):
         super().setup(title, subtitle)
 
-        if self.exchange_config is None:
+        if self.exchange_config is None or self.apis_config is None:
             QMessageBox.warning(self.frame, "Warning", "configs and parameters/methods are missing.")
             return
 
@@ -524,7 +832,7 @@ class Panel(object):
                 case "APIs":
                     scr = APIScreen(self.stack, self._save_config, self.save_env, apis_config=self.config["apis"])
                 case "Exchanges":
-                    scr = ExchangesScreen(self.stack, self._save_config, exchange_config=self.config["exchanges"])
+                    scr = ExchangesScreen(self.stack, self._save_config, exchange_config=self.config["exchanges"], apis_config=self.config["apis"])
                 case _:
                     scr = Screen(self.stack)
 
