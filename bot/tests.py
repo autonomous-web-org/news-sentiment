@@ -1,5 +1,6 @@
 import os
 import json
+import requests
 from dotenv import load_dotenv
 
 
@@ -15,18 +16,18 @@ def is_json_valid(json_string):
     """
     try:
         json.loads(json_string)
-        return "json valid ✔"
+        return "JSON valid ✔"
     except:
-        return "json invalid"
+        return ("JSON invalid")
     return True
 
 
 def check_env(variable="TEST", value="1"):
     if os.getenv(variable) == value:
-        return "env variables loaded ✔"
+        return "ENV variables loaded ✔"
     else:
         print(variable, value, os.getenv(variable))
-        return "env variables not loading"
+        return ("ENVenv variables not loading")
 
 
 def print_hierarchy(widget, depth=0):
@@ -40,3 +41,23 @@ def print_hierarchy(widget, depth=0):
 
     for child in widget.winfo_children():
         print_hierarchy(child, depth + 1)
+
+
+def test_apis(api_name, api_config):
+    if api_config["base_endpoint"] is None or api_config["api_key"] is None:
+        return 0
+
+    match api_name:
+        case 'news_api':
+            if api_config["enabled"] is False:
+                return "Not enabled"
+            params = {"apiKey": os.getenv(api_config["api_key"])}
+            response = requests.get(api_config["base_endpoint"]+"/top-headlines/sources", params=params)
+            data = response.json()
+
+            if response.status_code == 200:
+                return "It is working ✔"
+        case _:
+            return 0
+
+    return 0

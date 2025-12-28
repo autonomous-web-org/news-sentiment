@@ -1,13 +1,13 @@
 import os
 import json
-import traceback
 import pprint
+import traceback
 from PyQt6.QtWidgets import (
     QApplication,
 )
 
 from classes1 import Panel
-from tests import is_json_valid, check_env
+from tests import is_json_valid, check_env, test_apis
 
 
 
@@ -59,13 +59,20 @@ def save_env(key, value):
 
 
 # tests functionality ====================================================================================
-def tests():
+def run_tests():
     tests_results = []
 
     filename, config = load_config()
-    tests_results.append( f"config_integrity_and_loading ({filename}) -> " + is_json_valid(config) )
+    # tests_results.append( f"config_integrity_and_loading ({filename}) -> " + is_json_valid(config) )
     tests_results.append( "env_variables_loading -> " + check_env() )
 
+    config = json.loads(config)
+    for api_name, api_config in config["apis"].items():
+        res = test_apis(api_name, api_config)
+        if res:
+            tests_results.append(f"{api_name} -> {res}")
+        else:
+            tests_results.append(f"{api_name} -> Either the test function is not set or its not working")
 
     return tests_results
 
@@ -73,7 +80,7 @@ def tests():
 
 # main loop starts ====================================================================================
 try:
-    screens["Tests"]["run_tests_callback"] = tests
+    screens["Tests"]["run_tests_callback"] = run_tests
 
     filename, config = load_config()
 

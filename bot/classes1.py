@@ -241,7 +241,8 @@ class APIScreen(Screen):
         api_secret = os.getenv(env_key_name, "")
         api_secret_entry = QLineEdit(card)
         api_secret_entry.setText(api_secret)
-        api_secret_entry.setEchoMode(QLineEdit.EchoMode.Password)
+        # api_secret_entry.setEchoMode(QLineEdit.EchoMode.Password)
+        api_secret_entry.setReadOnly(True)
         api_secret_entry.installEventFilter(self._AltRevealFilter(api_secret_entry))
 
         base_endpoint_entry = QLineEdit(card)
