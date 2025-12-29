@@ -357,6 +357,7 @@ class APIScreen(Screen):
             return
         self._build_body()
 
+
 class ExchangesScreen(Screen):
     def __init__(self, parent, _save_config, exchange_config=None, apis_config=None, rss_config=None):
         super().__init__(parent)
@@ -880,6 +881,7 @@ class ExchangesScreen(Screen):
             return
 
         self._build_exchange_tree()
+
 
 class Panel(object):
     def __init__(self, screens, config, save_config, save_env):
