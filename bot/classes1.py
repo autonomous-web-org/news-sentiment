@@ -228,6 +228,7 @@ class APIScreen(Screen):
         layout.addLayout(bottom)
 
     def _add_api_card(self, api_name: str, values: dict):
+        # MOVE IT TO FORM LAYOUT
         """
         Create ONE API card widget and insert it into the scroll area's inner layout.
         """
@@ -356,18 +357,26 @@ class APIScreen(Screen):
             return
         self._build_body()
 
-
 class ExchangesScreen(Screen):
-    def __init__(self, parent, _save_config, exchange_config=None, apis_config=None):
+    def __init__(self, parent, _save_config, exchange_config=None, apis_config=None, rss_config=None):
         super().__init__(parent)
         self.exchange_config = exchange_config
-        self.apis_config = apis_config
+        self.apis_config = apis_config or {}   # allow empty apis
+        self.rss_config = rss_config           # can be None for now
+
         self.tree = None
         self.right = None
-
-        self.stock_vars = {}
         self._save_config = _save_config
 
+    # ---------- styling ----------
+    def _apply_enabled_style(self, item: QTreeWidgetItem, enabled: bool):
+        # If enabled, clear override so it uses theme default; if disabled, force grey. [web:79]
+        if enabled:
+            item.setData(0, Qt.ItemDataRole.ForegroundRole, None)  # clear override
+        else:
+            item.setForeground(0, QBrush(QColor("#9aa0a6")))
+
+    # ---------- tree building ----------
     def _build_exchange_tree(self):
         layout = QHBoxLayout(self.body)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -389,72 +398,71 @@ class ExchangesScreen(Screen):
         self.tree.setHeaderHidden(True)
         left_l.addWidget(self.tree, 1)
 
-        # Populate
         exchanges = self.exchange_config or {}
         for ex_key, ex in exchanges.items():
             ex_enabled = bool(ex.get("enabled", True))
             ex_text = f"{ex_key} - {ex.get('name', ex_key)}"
-
             ex_item = QTreeWidgetItem([ex_text])
-            self._apply_enabled_style(ex_item, ex_enabled)
             ex_item.setData(0, Qt.ItemDataRole.UserRole, ("ex", ex_key))
-            if not ex_enabled:
-                ex_item.setForeground(0, ex_item.foreground(0).color().fromString("#9aa0a6"))
-
             self.tree.addTopLevelItem(ex_item)
 
+            self._apply_enabled_style(ex_item, ex_enabled)
+
             stocks = ex.get("stocks", {}) or {}
-            for ticker, stock in stocks.items():
+            for ticker_key, stock in stocks.items():
                 stock_enabled = ex_enabled and bool(stock.get("enabled", True))
-                st_text = f"{ticker} - {stock.get('full_name', ticker)}"
-
+                st_text = f"{ticker_key} - {stock.get('full_name', ticker_key)}"
                 st_item = QTreeWidgetItem([st_text])
-                self._apply_enabled_style(st_item, stock_enabled)
-                st_item.setData(0, Qt.ItemDataRole.UserRole, ("st", ex_key, ticker))
-                if not stock_enabled:
-                    st_item.setForeground(0, st_item.foreground(0).color().fromString("#9aa0a6"))
-
+                st_item.setData(0, Qt.ItemDataRole.UserRole, ("st", ex_key, ticker_key))
                 ex_item.addChild(st_item)
 
+                self._apply_enabled_style(st_item, stock_enabled)
+
+                # Social group
                 social = stock.get("social_sources", {}) or {}
                 if social:
                     grp = QTreeWidgetItem(["Social sources"])
-                    grp.setData(0, Qt.ItemDataRole.UserRole, ("grp_social", ex_key, ticker))
+                    grp.setData(0, Qt.ItemDataRole.UserRole, ("grp_social", ex_key, ticker_key))
                     st_item.addChild(grp)
+                    self._apply_enabled_style(grp, stock_enabled)
+
                     for src_name, src_cfg in social.items():
                         src_enabled = stock_enabled and bool(src_cfg.get("enabled", True))
                         it = QTreeWidgetItem([src_name])
-                        it.setData(0, Qt.ItemDataRole.UserRole, ("src_social", ex_key, ticker, src_name))
-                        if not src_enabled:
-                            it.setForeground(0, it.foreground(0).color().fromString("#9aa0a6"))
+                        it.setData(0, Qt.ItemDataRole.UserRole, ("src_social", ex_key, ticker_key, src_name))
                         grp.addChild(it)
+                        self._apply_enabled_style(it, src_enabled)
 
+                # News group (list)
                 news = stock.get("news_sources", []) or []
                 if news:
                     grp = QTreeWidgetItem(["News sources"])
-                    grp.setData(0, Qt.ItemDataRole.UserRole, ("grp_news", ex_key, ticker))
+                    grp.setData(0, Qt.ItemDataRole.UserRole, ("grp_news", ex_key, ticker_key))
                     st_item.addChild(grp)
+                    self._apply_enabled_style(grp, stock_enabled)
+
                     for i, src_cfg in enumerate(news):
                         src_name = src_cfg.get("name", f"news_{i}")
                         src_enabled = stock_enabled and bool(src_cfg.get("enabled", True))
                         it = QTreeWidgetItem([src_name])
-                        it.setData(0, Qt.ItemDataRole.UserRole, ("src_news", ex_key, ticker, i))
-                        if not src_enabled:
-                            it.setForeground(0, it.foreground(0).color().fromString("#9aa0a6"))
+                        it.setData(0, Qt.ItemDataRole.UserRole, ("src_news", ex_key, ticker_key, i))
                         grp.addChild(it)
+                        self._apply_enabled_style(it, src_enabled)
 
+                # Financial group
                 fin = stock.get("financial_sources", {}) or {}
                 if fin:
                     grp = QTreeWidgetItem(["Financial sources"])
-                    grp.setData(0, Qt.ItemDataRole.UserRole, ("grp_fin", ex_key, ticker))
+                    grp.setData(0, Qt.ItemDataRole.UserRole, ("grp_fin", ex_key, ticker_key))
                     st_item.addChild(grp)
+                    self._apply_enabled_style(grp, stock_enabled)
+
                     for src_name, src_cfg in fin.items():
                         src_enabled = stock_enabled and bool(src_cfg.get("enabled", True))
                         it = QTreeWidgetItem([src_name])
-                        it.setData(0, Qt.ItemDataRole.UserRole, ("src_fin", ex_key, ticker, src_name))
-                        if not src_enabled:
-                            it.setForeground(0, it.foreground(0).color().fromString("#9aa0a6"))
+                        it.setData(0, Qt.ItemDataRole.UserRole, ("src_fin", ex_key, ticker_key, src_name))
                         grp.addChild(it)
+                        self._apply_enabled_style(it, src_enabled)
 
         self.tree.expandToDepth(0)
         self.tree.currentItemChanged.connect(self._on_tree_select)
@@ -465,7 +473,8 @@ class ExchangesScreen(Screen):
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
 
-    def _build_exchange_editor(self, ex_key: str, tree_item):
+    # ---------- editors ----------
+    def _build_exchange_editor(self, ex_key: str, tree_item: QTreeWidgetItem):
         ex = self.exchange_config[ex_key]
 
         wrapper = QWidget(self.right)
@@ -487,21 +496,20 @@ class ExchangesScreen(Screen):
         name_in.setText(ex.get("name", ""))
 
         symbol_in = QLineEdit(wrapper)
-        symbol_in.setText(ex.get("symbol", ""))
+        symbol_in.setText(ex.get("symbol", ""))  # field only
 
         enabled_in = QCheckBox("Enabled", wrapper)
         enabled_in.setChecked(bool(ex.get("enabled", True)))
 
         tz_in = QComboBox(wrapper)
-        # QTimeZone can list available IANA IDs on the system [web:62]
         tz_ids = [bytes(z).decode("utf-8", "ignore") for z in QTimeZone.availableTimeZoneIds()]
         tz_ids.sort()
         tz_in.addItems(tz_ids)
-        current_tz = ex.get("timezone", "UTC")
-        if current_tz in tz_ids:
-            tz_in.setCurrentText(current_tz)
+        cur_tz = ex.get("timezone", "UTC")
+        if cur_tz in tz_ids:
+            tz_in.setCurrentText(cur_tz)
         else:
-            tz_in.insertItem(0, current_tz)
+            tz_in.insertItem(0, cur_tz)
             tz_in.setCurrentIndex(0)
 
         form.addRow("Name", name_in)
@@ -511,23 +519,19 @@ class ExchangesScreen(Screen):
 
         btns = QHBoxLayout()
         btns.addStretch(1)
-
         save_btn = QPushButton("Save exchange", wrapper)
         btns.addWidget(save_btn)
         v.addLayout(btns)
 
         def on_save():
-            ex = self.exchange_config[ex_key]
-
             ex["name"] = name_in.text().strip()
-            ex["symbol"] = symbol_in.text().strip()      # only this field changes
+            ex["symbol"] = symbol_in.text().strip()
             ex["timezone"] = tz_in.currentText().strip()
             ex["enabled"] = bool(enabled_in.isChecked())
 
-            # Update the tree label (display only)
+            tree_item.setText(0, f"{ex_key} - {ex.get('name', ex_key)}")
             self._apply_enabled_style(tree_item, ex["enabled"])
             self._refresh_children_styles_for_exchange(ex_key, tree_item)
-            tree_item.setText(0, f"{ex_key} - {ex.get('name', ex_key)}")  # display refresh [web:79]
 
             self._save_config()
             QMessageBox.information(self.frame, "Saved", "Exchange updated.")
@@ -537,15 +541,15 @@ class ExchangesScreen(Screen):
         self.right.layout().addWidget(wrapper)
         self.right.layout().addStretch(1)
 
-    def _build_stock_editor(self, ex_key: str, ticker: str, tree_item):
-        stock = self.exchange_config[ex_key]["stocks"][ticker]
+    def _build_stock_editor(self, ex_key: str, ticker_key: str, tree_item: QTreeWidgetItem):
+        stock = self.exchange_config[ex_key]["stocks"][ticker_key]
 
         wrapper = QWidget(self.right)
         v = QVBoxLayout(wrapper)
         v.setContentsMargins(10, 10, 10, 10)
         v.setSpacing(12)
 
-        title = QLabel(f"Stock: {ex_key} / {ticker}", wrapper)
+        title = QLabel(f"Stock: {ex_key} / {ticker_key}", wrapper)
         f = title.font()
         f.setPointSize(13)
         f.setBold(True)
@@ -556,7 +560,7 @@ class ExchangesScreen(Screen):
         v.addLayout(form)
 
         ticker_in = QLineEdit(wrapper)
-        ticker_in.setText(stock.get("ticker", ticker))
+        ticker_in.setText(stock.get("ticker", ticker_key))  # field only
 
         full_name_in = QLineEdit(wrapper)
         full_name_in.setText(stock.get("full_name", ""))
@@ -570,22 +574,23 @@ class ExchangesScreen(Screen):
 
         btns = QHBoxLayout()
         btns.addStretch(1)
-
         save_btn = QPushButton("Save stock", wrapper)
         btns.addWidget(save_btn)
         v.addLayout(btns)
 
         def on_save():
-            stock = self.exchange_config[ex_key]["stocks"][ticker]
-
-            stock["ticker"] = ticker_in.text().strip()   # only this field changes
+            stock["ticker"] = ticker_in.text().strip()
             stock["full_name"] = full_name_in.text().strip()
             stock["enabled"] = bool(enabled_in.isChecked())
 
-            # Update the tree label (display only)
-            tree_item.setText(0, f"{ticker} - {stock.get('full_name', ticker)}")  # [web:79]
+            tree_item.setText(0, f"{ticker_key} - {stock.get('full_name', ticker_key)}")
+
             ex_enabled = bool(self.exchange_config[ex_key].get("enabled", True))
-            self._apply_enabled_style(tree_item, ex_enabled and stock["enabled"])
+            stock_effective = ex_enabled and bool(stock.get("enabled", True))
+            self._apply_enabled_style(tree_item, stock_effective)
+
+            # also restyle the stock subtree (groups/sources)
+            self._refresh_stock_subtree_styles(ex_key, ticker_key, tree_item)
 
             self._save_config()
             QMessageBox.information(self.frame, "Saved", "Stock updated.")
@@ -595,16 +600,24 @@ class ExchangesScreen(Screen):
         self.right.layout().addWidget(wrapper)
         self.right.layout().addStretch(1)
 
-    def _build_news_source_editor(self, ex_key: str, ticker: str, idx: int, tree_item):
-        stock = self.exchange_config[ex_key]["stocks"][ticker]
-        src = stock["news_sources"][idx]
+    def _build_news_source_editor(self, ex_key: str, ticker_key: str, idx: int, tree_item: QTreeWidgetItem):
+        stock = self.exchange_config[ex_key]["stocks"][ticker_key]
+        news_list = stock.get("news_sources", []) or []
+
+        if idx < 0 or idx >= len(news_list):
+            # The tree payload is stale (likely right after a delete). Avoid crashing.
+            self.right.layout().addWidget(QLabel("This news source no longer exists. Select another item."))
+            self.right.layout().addStretch(1)
+            return
+
+        src = news_list[idx]
 
         wrapper = QWidget(self.right)
         v = QVBoxLayout(wrapper)
         v.setContentsMargins(10, 10, 10, 10)
         v.setSpacing(12)
 
-        title = QLabel(f"News source: {ex_key} / {ticker} / #{idx}", wrapper)
+        title = QLabel(f"News source: {ex_key} / {ticker_key} / #{idx}", wrapper)
         f = title.font()
         f.setPointSize(13)
         f.setBold(True)
@@ -620,16 +633,16 @@ class ExchangesScreen(Screen):
         type_in = QComboBox(wrapper)
         type_in.setEditable(False)
         type_in.addItems(["rss", "api"])
-        current_type = src.get("type", "rss")
-        if current_type in ("rss", "api"):
-            type_in.setCurrentText(current_type)
+        cur_type = src.get("type", "rss")
+        if cur_type in ("rss", "api"):
+            type_in.setCurrentText(cur_type)
 
         name_in = QComboBox(wrapper)
         name_in.setEditable(False)
 
         query_in = QLineEdit(wrapper)
         query_in.setText(src.get("query", ""))
-        query_in.setMaxLength(800)  # rough cap for ~100 words [web:78]
+        query_in.setMaxLength(800)
 
         form.addRow("", enabled_in)
         form.addRow("Type", type_in)
@@ -644,7 +657,6 @@ class ExchangesScreen(Screen):
             cur = src.get("name", "")
 
             if t == "api":
-                # from "apis" config
                 api_names = sorted(list((self.apis_config or {}).keys()))
                 if api_names:
                     name_in.addItems(api_names)
@@ -652,19 +664,15 @@ class ExchangesScreen(Screen):
                         name_in.setCurrentText(cur)
                     else:
                         name_in.setCurrentIndex(0)
-                # if no apis, leave combo empty
-            else:  # rss
-                # later you'll add self.rss_config = config["rss"]
-                rss_cfg = getattr(self, "rss_config", None)
-                if rss_cfg:
-                    rss_names = sorted(list(rss_cfg.keys()))
-                    if rss_names:
-                        name_in.addItems(rss_names)
-                        if cur in rss_names:
-                            name_in.setCurrentText(cur)
-                        else:
-                            name_in.setCurrentIndex(0)
-                # if no rss config yet, keep combo empty (allowed) [web:103]
+            else:
+                # RSS config not present yet -> empty dropdown is fine. [web:103]
+                rss_names = sorted(list((self.rss_config or {}).keys())) if self.rss_config else []
+                if rss_names:
+                    name_in.addItems(rss_names)
+                    if cur in rss_names:
+                        name_in.setCurrentText(cur)
+                    else:
+                        name_in.setCurrentIndex(0)
 
             name_in.blockSignals(False)
 
@@ -672,42 +680,146 @@ class ExchangesScreen(Screen):
         type_in.currentTextChanged.connect(lambda _t: repopulate_name_dropdown())
 
         btns = QHBoxLayout()
-        btns.addStretch(1)
+        delete_btn = QPushButton("Delete news source", wrapper)
         save_btn = QPushButton("Save news source", wrapper)
+        btns.addWidget(delete_btn)
+        btns.addStretch(1)
         btns.addWidget(save_btn)
         v.addLayout(btns)
 
+        def _effective_stock_enabled():
+            ex_enabled = bool(self.exchange_config[ex_key].get("enabled", True))
+            st_enabled = bool(stock.get("enabled", True))
+            return ex_enabled and st_enabled
+
         def on_save():
             q = query_in.text().strip()
-            if q:
-                word_count = len(q.split())
-                if word_count > 100:
-                    QMessageBox.warning(self.frame, "Invalid query", f"Query too long: {word_count} words (max 100).")
-                    return
+            if q and len(q.split()) > 100:
+                QMessageBox.warning(self.frame, "Invalid query", "Query too long (max 100 words).")
+                return
 
             src["enabled"] = bool(enabled_in.isChecked())
             src["type"] = type_in.currentText().strip()
-            src["name"] = name_in.currentText().strip()  # may be "" if combo is empty
+            src["name"] = name_in.currentText().strip()  # can be ""
             src["query"] = q
 
-            # update tree text
             display_name = src.get("name") or f"news_{idx}"
-            tree_item.setText(0, display_name)  # [web:79]
+            tree_item.setText(0, display_name)
 
-            ex_enabled = bool(self.exchange_config[ex_key].get("enabled", True))
-            stock_enabled = ex_enabled and bool(stock.get("enabled", True))
-            effective = stock_enabled and bool(src.get("enabled", True))
+            effective = _effective_stock_enabled() and bool(src.get("enabled", True))
             self._apply_enabled_style(tree_item, effective)
 
             self._save_config()
             QMessageBox.information(self.frame, "Saved", "News source updated.")
 
+        def on_delete():
+            reply = QMessageBox.question(self.frame, "Confirm delete", f"Delete this news source (#{idx})?")
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+
+            # 1) Remove from backing list
+            stock["news_sources"].pop(idx)
+
+            # 2) Remove from tree safely
+            parent = tree_item.parent()
+            if parent is not None:
+                row = parent.indexOfChild(tree_item)
+                removed = parent.takeChild(row)  # detaches item [web:133]
+                del removed
+            else:
+                # shouldn't happen for src_news, but keep safe
+                row = self.tree.indexOfTopLevelItem(tree_item)
+                removed = self.tree.takeTopLevelItem(row)  # [web:133]
+                del removed
+
+            if parent is not None:
+                self.tree.setCurrentItem(parent, 0)
+
+            # 3) Re-index remaining src_news items under the same "News sources" group
+            self._reindex_news_items_under_group(parent, ex_key, ticker_key)
+
+            # 4) Clear right panel + save config
+            self._clear_right()
+            self.right.layout().addWidget(QLabel("Deleted. Select another item."))
+            self.right.layout().addStretch(1)
+
+            self._save_config()
+
         save_btn.clicked.connect(on_save)
+        delete_btn.clicked.connect(on_delete)
 
         self.right.layout().addWidget(wrapper)
         self.right.layout().addStretch(1)
 
-    def _refresh_children_styles_for_exchange(self, ex_key: str, ex_item):
+    # ---------- delete helper: reindex after pop ----------
+    def _reindex_news_items_under_group(self, news_group_item: QTreeWidgetItem, ex_key: str, ticker_key: str):
+        """
+        After deleting a list element, the remaining tree items must have their ("src_news", ex, ticker, idx)
+        updated to match the new list indices.
+        """
+        if news_group_item is None:
+            return
+
+        stock = self.exchange_config[ex_key]["stocks"][ticker_key]
+        for child_row in range(news_group_item.childCount()):
+            it = news_group_item.child(child_row)
+            payload = it.data(0, Qt.ItemDataRole.UserRole)
+            if payload and payload[0] == "src_news":
+                it.setData(0, Qt.ItemDataRole.UserRole, ("src_news", ex_key, ticker_key, child_row))
+
+                # Also update text from config (optional but nice)
+                if child_row < len(stock.get("news_sources", [])):
+                    name = stock["news_sources"][child_row].get("name", f"news_{child_row}")
+                    it.setText(0, name)
+
+    # ---------- style refresh ----------
+    def _refresh_stock_subtree_styles(self, ex_key: str, ticker_key: str, st_item: QTreeWidgetItem):
+        ex = self.exchange_config[ex_key]
+        stock = ex.get("stocks", {}).get(ticker_key, {})
+        ex_enabled = bool(ex.get("enabled", True))
+        st_enabled = bool(stock.get("enabled", True))
+        stock_effective = ex_enabled and st_enabled
+
+        # groups + children
+        for j in range(st_item.childCount()):
+            grp = st_item.child(j)
+            self._apply_enabled_style(grp, stock_effective)
+
+            grp_payload = grp.data(0, Qt.ItemDataRole.UserRole) or ()
+            grp_type = grp_payload[0] if grp_payload else ""
+
+            if grp_type == "grp_news":
+                news_list = stock.get("news_sources", []) or []
+                for k in range(grp.childCount()):
+                    src_item = grp.child(k)
+                    src_payload = src_item.data(0, Qt.ItemDataRole.UserRole) or ()
+                    if src_payload and src_payload[0] == "src_news":
+                        idx = src_payload[3]
+                        src_cfg = news_list[idx] if idx < len(news_list) else {}
+                        src_effective = stock_effective and bool(src_cfg.get("enabled", True))
+                        self._apply_enabled_style(src_item, src_effective)
+            elif grp_type == "grp_social":
+                social = stock.get("social_sources", {}) or {}
+                for k in range(grp.childCount()):
+                    src_item = grp.child(k)
+                    src_payload = src_item.data(0, Qt.ItemDataRole.UserRole) or ()
+                    if src_payload and src_payload[0] == "src_social":
+                        name = src_payload[3]
+                        src_cfg = social.get(name, {})
+                        src_effective = stock_effective and bool(src_cfg.get("enabled", True))
+                        self._apply_enabled_style(src_item, src_effective)
+            elif grp_type == "grp_fin":
+                fin = stock.get("financial_sources", {}) or {}
+                for k in range(grp.childCount()):
+                    src_item = grp.child(k)
+                    src_payload = src_item.data(0, Qt.ItemDataRole.UserRole) or ()
+                    if src_payload and src_payload[0] == "src_fin":
+                        name = src_payload[3]
+                        src_cfg = fin.get(name, {})
+                        src_effective = stock_effective and bool(src_cfg.get("enabled", True))
+                        self._apply_enabled_style(src_item, src_effective)
+
+    def _refresh_children_styles_for_exchange(self, ex_key: str, ex_item: QTreeWidgetItem):
         ex = self.exchange_config[ex_key]
         ex_enabled = bool(ex.get("enabled", True))
 
@@ -719,17 +831,11 @@ class ExchangesScreen(Screen):
 
             ticker_key = payload[2]
             stock = ex.get("stocks", {}).get(ticker_key, {})
-            stock_enabled = ex_enabled and bool(stock.get("enabled", True))
-            self._apply_enabled_style(st_item, stock_enabled)
+            stock_effective = ex_enabled and bool(stock.get("enabled", True))
+            self._apply_enabled_style(st_item, stock_effective)
+            self._refresh_stock_subtree_styles(ex_key, ticker_key, st_item)
 
-            # If you also want to gray out nested groups/sources:
-            for j in range(st_item.childCount()):
-                grp = st_item.child(j)
-                self._apply_enabled_style(grp, stock_enabled)
-                for k in range(grp.childCount()):
-                    src = grp.child(k)
-                    self._apply_enabled_style(src, stock_enabled)
-
+    # ---------- selection ----------
     def _on_tree_select(self, current, _previous):
         if current is None:
             return
@@ -739,26 +845,26 @@ class ExchangesScreen(Screen):
 
         if not payload:
             self.right.layout().addWidget(QLabel("Select an item on the left"))
+            self.right.layout().addStretch(1)
             return
 
         node_type = payload[0]
         if node_type == "ex":
-            ex_key = payload[1]
-            self._build_exchange_editor(ex_key, current)
+            self._build_exchange_editor(payload[1], current)
         elif node_type == "st":
-            ex_key, ticker = payload[1], payload[2]
-            self._build_stock_editor(ex_key, ticker, current)
+            self._build_stock_editor(payload[1], payload[2], current)
         elif node_type == "src_news":
-            ex_key, ticker, idx = payload[1], payload[2], payload[3]
-            self._build_news_source_editor(ex_key, ticker, idx, current)
+            self._build_news_source_editor(payload[1], payload[2], payload[3], current)
         else:
             self.right.layout().addWidget(QLabel(current.text(0)))
+            self.right.layout().addStretch(1)
 
     def _clear_right(self):
         lay = self.right.layout()
         if lay is None:
             lay = QVBoxLayout(self.right)
             lay.setContentsMargins(0, 0, 0, 0)
+
         while lay.count():
             item = lay.takeAt(0)
             w = item.widget()
@@ -769,12 +875,11 @@ class ExchangesScreen(Screen):
     def setup(self, title, subtitle):
         super().setup(title, subtitle)
 
-        if self.exchange_config is None or self.apis_config is None:
-            QMessageBox.warning(self.frame, "Warning", "configs and parameters/methods are missing.")
+        if self.exchange_config is None:
+            QMessageBox.warning(self.frame, "Warning", "exchange_config is missing.")
             return
 
         self._build_exchange_tree()
-
 
 class Panel(object):
     def __init__(self, screens, config, save_config, save_env):
