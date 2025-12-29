@@ -91,7 +91,7 @@ class Screen(object):
     def _apply_enabled_style(self, item, enabled: bool):
         # Keep selectable; only change appearance.
         color = QColor("#fff") if enabled else QColor("#9aa0a6")
-        item.setForeground(0, QBrush(color))  # gray-out via foreground role [web:84][web:79]
+        item.setForeground(0, QBrush(color))  # gray-out via foreground role 
 
     def setup(self, title: str, subtitle: str):
         self._screen_header(title, subtitle)
@@ -196,7 +196,7 @@ class APIScreen(Screen):
 
         # Scroll area once
         self.scroll_area = QScrollArea(self.body)
-        self.scroll_area.setWidgetResizable(True)  # key setting for good behavior [web:46]
+        self.scroll_area.setWidgetResizable(True)  # key setting for good behavior 
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         self.inner_widget = QWidget()
@@ -370,7 +370,7 @@ class ExchangesScreen(Screen):
 
     # ---------- styling ----------
     def _apply_enabled_style(self, item: QTreeWidgetItem, enabled: bool):
-        # If enabled, clear override so it uses theme default; if disabled, force grey. [web:79]
+        # If enabled, clear override so it uses theme default; if disabled, force grey. 
         if enabled:
             item.setData(0, Qt.ItemDataRole.ForegroundRole, None)  # clear override
         else:
@@ -665,7 +665,7 @@ class ExchangesScreen(Screen):
                     else:
                         name_in.setCurrentIndex(0)
             else:
-                # RSS config not present yet -> empty dropdown is fine. [web:103]
+                # RSS config not present yet -> empty dropdown is fine. 
                 rss_names = sorted(list((self.rss_config or {}).keys())) if self.rss_config else []
                 if rss_names:
                     name_in.addItems(rss_names)
@@ -724,12 +724,12 @@ class ExchangesScreen(Screen):
             parent = tree_item.parent()
             if parent is not None:
                 row = parent.indexOfChild(tree_item)
-                removed = parent.takeChild(row)  # detaches item [web:133]
+                removed = parent.takeChild(row)  # detaches item 
                 del removed
             else:
                 # shouldn't happen for src_news, but keep safe
                 row = self.tree.indexOfTopLevelItem(tree_item)
-                removed = self.tree.takeTopLevelItem(row)  # [web:133]
+                removed = self.tree.takeTopLevelItem(row)  # 
                 del removed
 
             if parent is not None:
